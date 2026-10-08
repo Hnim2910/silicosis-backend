@@ -1,0 +1,31 @@
+# Môi trường dev: PostgreSQL + Mailpit (SMTP giả, xem mail tại http://localhost:8025)
+# Chạy: docker compose --env-file .env up -d
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: silicocare-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-silicocare}
+      POSTGRES_USER: ${DB_USER:-silicocare}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Hãy đặt DB_PASSWORD trong .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: silicocare-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+
+volumes:
+  pgdata:

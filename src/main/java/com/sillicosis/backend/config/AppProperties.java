@@ -1,0 +1,39 @@
+package com.sillicosis.backend.config;
+
+import java.time.Duration;
+import java.util.List;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
+
+/** Cấu hình riêng của ứng dụng (tiền tố {@code app.}). */
+@ConfigurationProperties(prefix = "app")
+public record AppProperties(@DefaultValue Jwt jwt, @DefaultValue Security security, @DefaultValue Otp otp,
+		@DefaultValue Mail mail, @DefaultValue Admin admin, @DefaultValue Cors cors) {
+
+	/**
+	 * @param secret khoá HMAC-SHA256, tối thiểu 32 byte
+	 */
+	public record Jwt(String secret, @DefaultValue("silicocare") String issuer,
+			@DefaultValue("15m") Duration accessTokenTtl, @DefaultValue("7d") Duration refreshTokenTtl) {
+	}
+
+	public record Security(@DefaultValue("5") int maxFailedLogins, @DefaultValue("15m") Duration lockDuration) {
+	}
+
+	public record Otp(@DefaultValue("5m") Duration ttl, @DefaultValue("5") int maxAttempts,
+			@DefaultValue("60s") Duration resendInterval, @DefaultValue("15m") Duration resetTokenTtl) {
+	}
+
+	public record Mail(@DefaultValue("SilicoCare <no-reply@silicocare.local>") String from) {
+	}
+
+	/** Tài khoản admin seed lúc khởi động; bỏ qua nếu thiếu email hoặc mật khẩu. */
+	public record Admin(String email, String password, @DefaultValue("Quản trị viên") String fullName) {
+	}
+
+	public record Cors(@DefaultValue({ "http://localhost:3000", "http://localhost:8081", "http://localhost:19006",
+			"exp://*" }) List<String> allowedOriginPatterns) {
+	}
+
+}

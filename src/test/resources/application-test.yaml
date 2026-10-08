@@ -1,0 +1,17 @@
+app:
+  jwt:
+    secret: test-only-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+  admin:
+    email: ""
+    password: ""
+  mail:
+    from: SilicoCare <no-reply@silicocare.test>
+
+# Không dùng cấu hình SMTP thật trong .env của máy dev: test chỉ gửi tới GreenMail (không auth, không TLS).
+spring:
+  mail:
+    username: ""
+    password: ""
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false

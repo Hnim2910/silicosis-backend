@@ -5,11 +5,12 @@ import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.springframework.util.unit.DataSize;
 
 /** Cấu hình riêng của ứng dụng (tiền tố {@code app.}). */
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(@DefaultValue Jwt jwt, @DefaultValue Security security, @DefaultValue Otp otp,
-		@DefaultValue Mail mail, @DefaultValue Admin admin, @DefaultValue Cors cors) {
+		@DefaultValue Mail mail, @DefaultValue Admin admin, @DefaultValue Cors cors, @DefaultValue Storage storage) {
 
 	/**
 	 * @param secret khoá HMAC-SHA256, tối thiểu 32 byte
@@ -34,6 +35,10 @@ public record AppProperties(@DefaultValue Jwt jwt, @DefaultValue Security securi
 
 	public record Cors(@DefaultValue({ "http://localhost:3000", "http://localhost:8081", "http://localhost:19006",
 			"exp://*" }) List<String> allowedOriginPatterns) {
+	}
+
+	public record Storage(String imagesDir, @DefaultValue("10MB") DataSize maxUploadSize,
+		@DefaultValue("256") int minShortSide, @DefaultValue("8000") int maxDimension) {
 	}
 
 }

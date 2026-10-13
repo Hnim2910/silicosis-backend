@@ -17,6 +17,8 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,7 +34,8 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(ApiException.class)
 	ResponseEntity<ApiError> handleApi(ApiException ex, HttpServletRequest req) {
-		return build(ex.getStatus(), ex.getCode(), ex.getMessage(), req);
+		return ResponseEntity.status(ex.getStatus())
+			.body(ApiError.of(ex.getStatus().value(), ex.getCode(), ex.getMessage(), req.getRequestURI(), ex.getDetails()));
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
@@ -53,9 +56,14 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler({ HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
-			MissingServletRequestParameterException.class })
+			MissingServletRequestParameterException.class, MissingServletRequestPartException.class })
 	ResponseEntity<ApiError> handleBadRequest(Exception ex, HttpServletRequest req) {
 		return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "Yêu cầu không đúng định dạng.", req);
+	}
+
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	ResponseEntity<ApiError> handleUploadTooLarge(MaxUploadSizeExceededException ex, HttpServletRequest req) {
+		return build(HttpStatus.PAYLOAD_TOO_LARGE, "IMAGE_TOO_LARGE", "Ảnh vượt quá dung lượng cho phép.", req);
 	}
 
 	/** Hai yêu cầu đồng thời vượt qua kiểm tra trùng và va vào unique index. */

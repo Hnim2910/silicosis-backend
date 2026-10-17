@@ -19,7 +19,9 @@ public final class TestProps {
 				new AppProperties.Otp(Duration.ofMinutes(5), 5, Duration.ofSeconds(60), Duration.ofMinutes(15)),
 				new AppProperties.Mail("SilicoCare <no-reply@silicocare.local>"),
 				new AppProperties.Admin(null, null, "Quản trị viên"),
-				new AppProperties.Cors(List.of("http://localhost:3000")));
+				new AppProperties.Cors(List.of("http://localhost:3000")),
+				new AppProperties.Storage(System.getProperty("java.io.tmpdir"),
+						org.springframework.util.unit.DataSize.ofMegabytes(10), 256, 8000));
 	}
 
 }

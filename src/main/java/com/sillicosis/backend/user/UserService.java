@@ -16,6 +16,7 @@ import com.sillicosis.backend.auth.TokenService;
 import com.sillicosis.backend.common.ApiException;
 import com.sillicosis.backend.common.PageResponse;
 import com.sillicosis.backend.common.PhoneNumbers;
+import com.sillicosis.backend.patient.PatientService;
 import com.sillicosis.backend.user.dto.ChangePasswordRequest;
 import com.sillicosis.backend.user.dto.CreateUserRequest;
 import com.sillicosis.backend.user.dto.UpdateProfileRequest;
@@ -31,6 +32,7 @@ public class UserService {
 	private final UserRepository userRepository;
 	private final UserAccounts userAccounts;
 	private final TokenService tokenService;
+	private final PatientService patientService;
 	private final PasswordEncoder passwordEncoder;
 	private final Clock clock;
 
@@ -41,6 +43,7 @@ public class UserService {
 		return UserResponse.from(currentUser(userId));
 	}
 
+	/** Họ tên, ngày sinh, giới tính, nghề nghiệp được chép sang hồ sơ bệnh nhân gắn với tài khoản. */
 	@Transactional
 	public UserResponse updateMe(UUID userId, UpdateProfileRequest req) {
 		User user = currentUser(userId);
@@ -53,6 +56,7 @@ public class UserService {
 		user.setBirthDate(req.birthDate());
 		user.setGender(req.gender());
 		user.setOccupation(blankToNull(req.occupation()));
+		patientService.syncFromUser(user);
 		userRepository.flush();
 		return UserResponse.from(user);
 	}
@@ -83,8 +87,9 @@ public class UserService {
 		return UserResponse.from(userAccounts.getActive(id));
 	}
 
+	/** Tài khoản USER mới kèm hồ sơ bệnh nhân trong cùng transaction. */
 	@Transactional
-	public UserResponse create(CreateUserRequest req) {
+	public UserResponse create(UUID actorId, CreateUserRequest req) {
 		String email = UserAccounts.normalizeEmail(req.email());
 		String phone = PhoneNumbers.normalize(req.phone());
 		userAccounts.ensureUnique(email, phone, null);
@@ -94,7 +99,9 @@ public class UserService {
 		user.setFullName(req.fullName().trim());
 		user.setPasswordHash(passwordEncoder.encode(req.password()));
 		user.setRole(Role.USER);
-		return UserResponse.from(userRepository.saveAndFlush(user));
+		userRepository.saveAndFlush(user);
+		patientService.createForUser(user, actorId);
+		return UserResponse.from(user);
 	}
 
 	/** Khoá/mở khoá. Mở khoá cũng xoá khoá tạm do đăng nhập sai. */
@@ -113,7 +120,10 @@ public class UserService {
 		return UserResponse.from(user);
 	}
 
-	/** Xoá mềm: giữ bản ghi (liên kết dữ liệu y tế), giải phóng email/SĐT, thu hồi phiên. */
+	/**
+	 * Xoá mềm: giữ bản ghi (liên kết dữ liệu y tế), giải phóng email/SĐT, thu hồi phiên. Hồ sơ bệnh nhân gắn kèm
+	 * được giữ nguyên (có chủ ý); ADMIN xoá riêng nếu cần.
+	 */
 	@Transactional
 	public void delete(UUID actorId, UUID id) {
 		forbidSelf(actorId, id);

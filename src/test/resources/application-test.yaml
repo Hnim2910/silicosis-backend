@@ -6,6 +6,10 @@ app:
     password: ""
   mail:
     from: SilicoCare <no-reply@silicocare.test>
+  # Test không gọi service dự đoán thật; PredictionApiIntegrationTest tự bật và trỏ tới server giả.
+  predict:
+    enabled: false
+    base-url: http://127.0.0.1:9
 
 # Không dùng cấu hình SMTP thật trong .env của máy dev: test chỉ gửi tới GreenMail (không auth, không TLS).
 spring:

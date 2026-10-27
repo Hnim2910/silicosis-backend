@@ -47,6 +47,11 @@ public class GlobalExceptionHandler {
 		return validationError(fields, req);
 	}
 
+	@ExceptionHandler(InvalidFieldsException.class)
+	ResponseEntity<ApiError> handleInvalidFields(InvalidFieldsException ex, HttpServletRequest req) {
+		return validationError(new LinkedHashMap<>(ex.getFieldErrors()), req);
+	}
+
 	@ExceptionHandler(ConstraintViolationException.class)
 	ResponseEntity<ApiError> handleConstraint(ConstraintViolationException ex, HttpServletRequest req) {
 		Map<String, String> fields = new LinkedHashMap<>();

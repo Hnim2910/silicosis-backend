@@ -50,6 +50,16 @@ app:
     max-upload-size: ${APP_IMAGE_MAX_UPLOAD_SIZE:10MB}
     min-short-side: ${APP_IMAGE_MIN_SHORT_SIDE:256}
     max-dimension: ${APP_IMAGE_MAX_DIMENSION:8000}
+  patient:
+    max-text-length: ${APP_PATIENT_MAX_TEXT_LENGTH:2000}
+  visit:
+    extra-max-size: ${APP_VISIT_EXTRA_MAX_SIZE:8KB}
+    extra-max-depth: ${APP_VISIT_EXTRA_MAX_DEPTH:3}
+  predict:
+    enabled: ${PREDICT_ENABLED:true}
+    base-url: ${PREDICT_BASE_URL:http://localhost:8001}
+    timeout: ${PREDICT_TIMEOUT:30s}
+    connect-timeout: ${PREDICT_CONNECT_TIMEOUT:3s}
 
 springdoc:
   swagger-ui.path: /swagger-ui.html

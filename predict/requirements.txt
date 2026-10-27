@@ -1,0 +1,15 @@
+# Python 3.13.2. Pinned to the environment the model was trained/checked with (pip show, 2026-10-18).
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
+hi-ml-multimodal==0.2.2
+fastapi==0.121.3
+uvicorn==0.38.0
+python-multipart==0.0.27
+pillow==11.1.0
+pydantic-settings==2.14.0
+numpy==2.2.2
+
+# test
+pytest==8.3.4
+httpx==0.28.1

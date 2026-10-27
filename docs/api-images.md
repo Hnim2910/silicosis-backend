@@ -8,6 +8,8 @@ Tất cả endpoint trong tài liệu này cần access token:
 Authorization: Bearer <accessToken>
 ```
 
+`visitId` trong `ImageResponse` là lượt khám đang gắn ảnh, `null` nếu chưa gắn. Gắn và gỡ ảnh qua `PUT`/`DELETE /api/visits/{id}/image`: xem [api-visits.md](api-visits.md).
+
 ## Upload ảnh
 
 ### `POST /api/images` → 201 `ImageResponse`
@@ -29,6 +31,7 @@ Ví dụ phản hồi:
   "sizeBytes": 34567,
   "width": 1600,
   "height": 1200,
+  "visitId": null,
   "createdAt": "2026-10-13T12:00:00Z"
 }
 ```
@@ -75,7 +78,7 @@ Chủ ảnh hoặc ADMIN được phép tải ảnh. Tài khoản khác nhận 4
 
 ### `DELETE /api/images/{id}` → 204
 
-Chủ ảnh hoặc ADMIN có thể xóa. Bản ghi được xóa mềm trong database và file được xóa khỏi thư mục lưu trữ.
+Chủ ảnh hoặc ADMIN có thể xóa. Bản ghi được xóa mềm trong database và file được xóa khỏi thư mục lưu trữ. Ảnh đang gắn vào lượt khám vẫn xóa được; liên kết được gỡ trong cùng transaction.
 
 ## Lỗi
 

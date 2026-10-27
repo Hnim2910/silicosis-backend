@@ -67,9 +67,10 @@ public class AdminUserController {
 	}
 
 	@PostMapping
-	@Operation(summary = "Tạo tài khoản người dùng")
-	public ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest req) {
-		UserResponse created = userService.create(req);
+	@Operation(summary = "Tạo tài khoản người dùng (kèm hồ sơ bệnh nhân)")
+	public ResponseEntity<UserResponse> create(@AuthenticationPrincipal Jwt jwt,
+			@Valid @RequestBody CreateUserRequest req) {
+		UserResponse created = userService.create(UserController.userId(jwt), req);
 		return ResponseEntity.created(URI.create("/api/users/" + created.id())).body(created);
 	}
 

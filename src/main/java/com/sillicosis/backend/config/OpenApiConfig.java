@@ -17,7 +17,7 @@ public class OpenApiConfig {
 		return new OpenAPI()
 			.info(new Info().title("SilicoCare API")
 				.version("v1")
-				.description("API hệ thống hỗ trợ sàng lọc bệnh bụi phổi silic — giai đoạn 1: xác thực & người dùng"))
+				.description("API hệ thống hỗ trợ sàng lọc bệnh bụi phổi silic — xác thực, người dùng, ảnh X-quang, hồ sơ bệnh nhân"))
 			.components(new Components().addSecuritySchemes("bearerAuth",
 					new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")));
 	}

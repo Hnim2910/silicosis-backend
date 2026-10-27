@@ -73,7 +73,7 @@ public class ImageController {
 	}
 
 	@DeleteMapping("/{id}")
-	@Operation(summary = "Xóa ảnh (xóa mềm trong DB và xóa tệp); chủ ảnh hoặc ADMIN")
+	@Operation(summary = "Xóa ảnh (xóa mềm trong DB và xóa tệp); chủ ảnh hoặc ADMIN. Ảnh đang gắn lượt khám được gỡ liên kết")
 	public ResponseEntity<Void> delete(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
 		imageService.delete(userId(jwt), isAdmin(jwt), id);
 		return ResponseEntity.noContent().build();

@@ -1,5 +1,7 @@
 package com.sillicosis.backend.image;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,5 +16,9 @@ public interface ImageRepository extends JpaRepository<Image, UUID> {
 	Optional<Image> findByOwnerIdAndSha256AndDeletedAtIsNull(UUID ownerId, String sha256);
 
 	Page<Image> findByOwnerIdAndDeletedAtIsNull(UUID ownerId, Pageable pageable);
+
+	Optional<Image> findByVisitIdAndDeletedAtIsNull(UUID visitId);
+
+	List<Image> findByVisitIdInAndDeletedAtIsNull(Collection<UUID> visitIds);
 
 }

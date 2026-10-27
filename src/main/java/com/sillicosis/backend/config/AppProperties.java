@@ -10,7 +10,8 @@ import org.springframework.util.unit.DataSize;
 /** Cấu hình riêng của ứng dụng (tiền tố {@code app.}). */
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(@DefaultValue Jwt jwt, @DefaultValue Security security, @DefaultValue Otp otp,
-		@DefaultValue Mail mail, @DefaultValue Admin admin, @DefaultValue Cors cors, @DefaultValue Storage storage) {
+		@DefaultValue Mail mail, @DefaultValue Admin admin, @DefaultValue Cors cors, @DefaultValue Storage storage,
+		@DefaultValue Patient patient, @DefaultValue Visit visit, @DefaultValue Predict predict) {
 
 	/**
 	 * @param secret khoá HMAC-SHA256, tối thiểu 32 byte
@@ -39,6 +40,27 @@ public record AppProperties(@DefaultValue Jwt jwt, @DefaultValue Security securi
 
 	public record Storage(String imagesDir, @DefaultValue("10MB") DataSize maxUploadSize,
 		@DefaultValue("256") int minShortSide, @DefaultValue("8000") int maxDimension) {
+	}
+
+	/** @param maxTextLength giới hạn ký tự cho exposureHistory, riskFactors */
+	public record Patient(@DefaultValue("2000") int maxTextLength) {
+	}
+
+	/**
+	 * @param extraMaxSize kích thước tối đa của {@code extra} khi viết thành JSON
+	 * @param extraMaxDepth số cấp lồng tối đa, tính cả chính {@code extra}
+	 */
+	public record Visit(@DefaultValue("8KB") DataSize extraMaxSize, @DefaultValue("3") int extraMaxDepth) {
+	}
+
+	/**
+	 * Service dự đoán FastAPI (thư mục predict/).
+	 * @param enabled false: không tự dự đoán khi gắn ảnh; gọi lại thủ công trả 503 PREDICT_DISABLED
+	 * @param timeout thời gian chờ phản hồi (CPU mất khoảng 4 giây một ảnh)
+	 */
+	public record Predict(@DefaultValue("true") boolean enabled,
+			@DefaultValue("http://localhost:8001") String baseUrl, @DefaultValue("30s") Duration timeout,
+			@DefaultValue("3s") Duration connectTimeout) {
 	}
 
 }

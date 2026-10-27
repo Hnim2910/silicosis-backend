@@ -36,3 +36,10 @@ build/
 .env
 .env.*
 !.env.example
+
+### Predict service (FastAPI) ###
+predict/**/*.pth
+predict/**/*.pt
+predict/.venv/
+predict/**/__pycache__/
+predict/.pytest_cache/

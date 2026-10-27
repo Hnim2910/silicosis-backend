@@ -94,10 +94,12 @@ public class ImageService {
 		return new ImageContent(image.getContentType(), imageStorage.read(image.getStorageKey()));
 	}
 
+	/** Ảnh đang gắn với lượt khám vẫn xoá được; liên kết được gỡ trong cùng transaction. */
 	@Transactional
 	public void delete(UUID actorId, boolean admin, UUID imageId) {
 		activeUser(actorId);
 		Image image = authorizedImage(actorId, admin, imageId);
+		image.setVisitId(null);
 		image.setDeletedAt(clock.instant());
 		imageRepository.flush();
 		imageStorage.delete(image.getStorageKey());

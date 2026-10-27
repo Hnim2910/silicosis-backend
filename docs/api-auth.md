@@ -2,6 +2,8 @@
 
 Base URL dev: `http://localhost:8080` (đổi bằng `SERVER_PORT` trong `.env`) · Swagger UI: `/swagger-ui.html` · OpenAPI JSON: `/v3/api-docs`
 
+Tài liệu liên quan: [api-patients.md](api-patients.md) — hồ sơ bệnh nhân (`/api/patients`); [api-visits.md](api-visits.md) — lượt khám (`/api/visits`); [api-images.md](api-images.md) — ảnh X-quang (`/api/images`).
+
 Mọi request/response dùng JSON UTF-8. Endpoint cần đăng nhập gửi header:
 
 ```

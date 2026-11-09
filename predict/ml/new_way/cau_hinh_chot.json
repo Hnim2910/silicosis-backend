@@ -1,0 +1,1077 @@
+{
+ "ngay": "2026-11-08 21:03:07",
+ "nhan": "ketqua (1 = duong)",
+ "chi_dung_dev": true,
+ "test_chua_dung": true,
+ "hieu_chuan_them": "KHONG (buoc 6a: Platt/isotonic khong giam Brier; isotonic lam xau ban ghep)",
+ "lam_sang_app": {
+  "mo_hinh": "XGBoost",
+  "file": "cache/mo_hinh_cuoi/lam_sang_app_xgb.json",
+  "sha256": "7dfe552d2c09f7d8e8876a3eb1125e3d86e9af5927d682aab0afefcde0149b8c",
+  "xgboost": "3.4.1",
+  "tham_so": {
+   "max_depth": 2,
+   "min_child_weight": 1,
+   "n_estimators": 300,
+   "learning_rate": 0.03,
+   "subsample": 0.8,
+   "colsample_bytree": 0.5,
+   "tree_method": "hist",
+   "random_state": 0
+  },
+  "hoc_tren": "nhom khong anh dev (n=5183, duong=427)",
+  "dac_trung": {
+   "bo": "bien.csv dung/dung_co, bo tinh, bo A-F, bo B2/B10; cap nghe tu cache/nghe_10cap.csv",
+   "so_dac_trung": 143,
+   "thu_tu_cot": [
+    "gioitinh==Nu",
+    "namsinh",
+    "tuoinghe",
+    "nampx",
+    "cv5nam==Khong",
+    "tgian1",
+    "tgian1__thieu",
+    "tgian2",
+    "tgian2__thieu",
+    "cao",
+    "can",
+    "hatd",
+    "hatt",
+    "mach",
+    "theluc==1",
+    "theluc==2",
+    "theluc==3",
+    "theluc==4",
+    "theluc==__hiem__",
+    "hutthuoc==Khong hut thuoc",
+    "slthuoc",
+    "slthuoc__thieu",
+    "tiensuhh==Khong",
+    "benhhh__co_ghi",
+    "tsnoi__co_ghi",
+    "tsngoai__co_ghi",
+    "ho==Khong",
+    "tdho==Ban dem",
+    "tdho==Ban ngay",
+    "tdho==Ca ngay va dem",
+    "tdho==__NA__",
+    "tsho==Khac",
+    "tsho==Lien tuc",
+    "tsho==Tung con",
+    "tsho==__NA__",
+    "n1__co_ghi",
+    "khacdom==Khong",
+    "loaidom==Dom ba dau",
+    "loaidom==Dom mu",
+    "loaidom==Dom nhay",
+    "loaidom==__NA__",
+    "loaidom==__hiem__",
+    "tdkhacdo==Ban dem",
+    "tdkhacdo==Ban ngay",
+    "tdkhacdo==Ca ngay va dem",
+    "tdkhacdo==__NA__",
+    "khotho==Khong",
+    "mdkhotho==\"Kho tho thuong xuyen, ca khi nghi ngoi\"",
+    "mdkhotho==Kho tho khi gang suc",
+    "mdkhotho==Kho tho khi lam viec nhe",
+    "mdkhotho==Kho tho thuong xuyen, ca khi nghi ngoi",
+    "mdkhotho==Kho tho tung con",
+    "mdkhotho==__NA__",
+    "tdkhotho==Ban dem",
+    "tdkhotho==Ban ngay",
+    "tdkhotho==Ca ngay va dem",
+    "tdkhotho==__NA__",
+    "daunguc==Khong",
+    "vitridau==Dau sau xuong uc",
+    "vitridau==Hai ben nguc",
+    "vitridau==Nguc phai",
+    "vitridau==Nguc trai",
+    "vitridau==__NA__",
+    "daulan==Co",
+    "daulan==Khong",
+    "daulan==__NA__",
+    "tcdau==De ep",
+    "tcdau==Khac",
+    "tcdau==Nhu dao dam",
+    "tcdau==Xiet chat",
+    "tcdau==__NA__",
+    "n2__co_ghi",
+    "tgdau",
+    "tgdau__thieu",
+    "ytodau==Khac",
+    "ytodau==Khi gang suc",
+    "ytodau==Khi nghi ngoi",
+    "ytodau==__NA__",
+    "n3__co_ghi",
+    "ytotang__co_ghi",
+    "chaymui==Khong",
+    "khan==Khong",
+    "khokhe==Khong",
+    "dhkhac__co_ghi",
+    "metmoi==Khong",
+    "sutcan==Khong",
+    "socansut",
+    "socansut__thieu",
+    "tgsut",
+    "tgsut__thieu",
+    "longnguc==Khong can doi",
+    "khoangls==Binh thuong",
+    "khoangls==Gian rong",
+    "khoangls==__hiem__",
+    "rungthan==Binh thuong",
+    "rungthan==Giam",
+    "rungthan==__hiem__",
+    "go==__hiem__",
+    "riraopn==Binh thuong",
+    "riraopn==Giam",
+    "riraopn==__hiem__",
+    "ran==Khong",
+    "fvclt",
+    "fvctt",
+    "fev1lt",
+    "fev1tt",
+    "fvc",
+    "fev1",
+    "gaenler",
+    "cviec_cap==1.0",
+    "cviec_cap==10.0",
+    "cviec_cap==2.0",
+    "cviec_cap==3.0",
+    "cviec_cap==4.0",
+    "cviec_cap==5.0",
+    "cviec_cap==6.0",
+    "cviec_cap==7.0",
+    "cviec_cap==8.0",
+    "cviec_cap==__NA__",
+    "pxuong_cap==1.0",
+    "pxuong_cap==10.0",
+    "pxuong_cap==2.0",
+    "pxuong_cap==3.0",
+    "pxuong_cap==4.0",
+    "pxuong_cap==5.0",
+    "pxuong_cap==6.0",
+    "pxuong_cap==7.0",
+    "pxuong_cap==8.0",
+    "pxuong_cap==__NA__",
+    "cviec1_cap==1.0",
+    "cviec1_cap==10.0",
+    "cviec1_cap==2.0",
+    "cviec1_cap==3.0",
+    "cviec1_cap==4.0",
+    "cviec1_cap==5.0",
+    "cviec1_cap==6.0",
+    "cviec1_cap==8.0",
+    "cviec1_cap==9.0",
+    "cviec1_cap==__NA__",
+    "cviec2_cap==1.0",
+    "cviec2_cap==5.0",
+    "cviec2_cap==__NA__",
+    "cviec2_cap==__hiem__"
+   ],
+   "ma_hoa": {
+    "gioitinh": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Nu"
+     ],
+     "dac_trung": [
+      "gioitinh==Nu"
+     ],
+     "muc_giu": [
+      "Nam",
+      "Nu"
+     ]
+    },
+    "namsinh": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "namsinh"
+     ]
+    },
+    "tuoinghe": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "tuoinghe"
+     ]
+    },
+    "nampx": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "nampx"
+     ]
+    },
+    "cv5nam": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "cv5nam==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "tgian1": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "tgian1",
+      "tgian1__thieu"
+     ]
+    },
+    "tgian2": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "tgian2",
+      "tgian2__thieu"
+     ]
+    },
+    "cao": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "cao"
+     ]
+    },
+    "can": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "can"
+     ]
+    },
+    "hatd": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "hatd"
+     ]
+    },
+    "hatt": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "hatt"
+     ]
+    },
+    "mach": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "mach"
+     ]
+    },
+    "theluc": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "__hiem__"
+     ],
+     "dac_trung": [
+      "theluc==1",
+      "theluc==2",
+      "theluc==3",
+      "theluc==4",
+      "theluc==__hiem__"
+     ],
+     "muc_giu": [
+      "1",
+      "2",
+      "3",
+      "4"
+     ]
+    },
+    "hutthuoc": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong hut thuoc"
+     ],
+     "dac_trung": [
+      "hutthuoc==Khong hut thuoc"
+     ],
+     "muc_giu": [
+      "Co hut thuoc",
+      "Khong hut thuoc"
+     ]
+    },
+    "slthuoc": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "slthuoc",
+      "slthuoc__thieu"
+     ]
+    },
+    "tiensuhh": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "tiensuhh==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "benhhh": {
+     "kieu": "co_ghi (1 neu text chuan hoa khong thuoc NEG_TEXT)",
+     "dac_trung": [
+      "benhhh__co_ghi"
+     ]
+    },
+    "tsnoi": {
+     "kieu": "co_ghi (1 neu text chuan hoa khong thuoc NEG_TEXT)",
+     "dac_trung": [
+      "tsnoi__co_ghi"
+     ]
+    },
+    "tsngoai": {
+     "kieu": "co_ghi (1 neu text chuan hoa khong thuoc NEG_TEXT)",
+     "dac_trung": [
+      "tsngoai__co_ghi"
+     ]
+    },
+    "ho": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "ho==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "tdho": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Ban dem",
+      "Ban ngay",
+      "Ca ngay va dem",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "tdho==Ban dem",
+      "tdho==Ban ngay",
+      "tdho==Ca ngay va dem",
+      "tdho==__NA__"
+     ],
+     "muc_giu": [
+      "Ban dem",
+      "Ban ngay",
+      "Ca ngay va dem",
+      "__NA__"
+     ]
+    },
+    "tsho": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khac",
+      "Lien tuc",
+      "Tung con",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "tsho==Khac",
+      "tsho==Lien tuc",
+      "tsho==Tung con",
+      "tsho==__NA__"
+     ],
+     "muc_giu": [
+      "Khac",
+      "Lien tuc",
+      "Tung con",
+      "__NA__"
+     ]
+    },
+    "n1": {
+     "kieu": "co_ghi (1 neu text chuan hoa khong thuoc NEG_TEXT)",
+     "dac_trung": [
+      "n1__co_ghi"
+     ]
+    },
+    "khacdom": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "khacdom==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "loaidom": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Dom ba dau",
+      "Dom mu",
+      "Dom nhay",
+      "__NA__",
+      "__hiem__"
+     ],
+     "dac_trung": [
+      "loaidom==Dom ba dau",
+      "loaidom==Dom mu",
+      "loaidom==Dom nhay",
+      "loaidom==__NA__",
+      "loaidom==__hiem__"
+     ],
+     "muc_giu": [
+      "Dom ba dau",
+      "Dom mu",
+      "Dom nhay",
+      "__NA__"
+     ]
+    },
+    "tdkhacdo": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Ban dem",
+      "Ban ngay",
+      "Ca ngay va dem",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "tdkhacdo==Ban dem",
+      "tdkhacdo==Ban ngay",
+      "tdkhacdo==Ca ngay va dem",
+      "tdkhacdo==__NA__"
+     ],
+     "muc_giu": [
+      "Ban dem",
+      "Ban ngay",
+      "Ca ngay va dem",
+      "__NA__"
+     ]
+    },
+    "khotho": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "khotho==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "mdkhotho": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "\"Kho tho thuong xuyen, ca khi nghi ngoi\"",
+      "Kho tho khi gang suc",
+      "Kho tho khi lam viec nhe",
+      "Kho tho thuong xuyen, ca khi nghi ngoi",
+      "Kho tho tung con",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "mdkhotho==\"Kho tho thuong xuyen, ca khi nghi ngoi\"",
+      "mdkhotho==Kho tho khi gang suc",
+      "mdkhotho==Kho tho khi lam viec nhe",
+      "mdkhotho==Kho tho thuong xuyen, ca khi nghi ngoi",
+      "mdkhotho==Kho tho tung con",
+      "mdkhotho==__NA__"
+     ],
+     "muc_giu": [
+      "\"Kho tho thuong xuyen, ca khi nghi ngoi\"",
+      "Kho tho khi gang suc",
+      "Kho tho khi lam viec nhe",
+      "Kho tho thuong xuyen, ca khi nghi ngoi",
+      "Kho tho tung con",
+      "__NA__"
+     ]
+    },
+    "tdkhotho": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Ban dem",
+      "Ban ngay",
+      "Ca ngay va dem",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "tdkhotho==Ban dem",
+      "tdkhotho==Ban ngay",
+      "tdkhotho==Ca ngay va dem",
+      "tdkhotho==__NA__"
+     ],
+     "muc_giu": [
+      "Ban dem",
+      "Ban ngay",
+      "Ca ngay va dem",
+      "__NA__"
+     ]
+    },
+    "daunguc": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "daunguc==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "vitridau": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Dau sau xuong uc",
+      "Hai ben nguc",
+      "Nguc phai",
+      "Nguc trai",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "vitridau==Dau sau xuong uc",
+      "vitridau==Hai ben nguc",
+      "vitridau==Nguc phai",
+      "vitridau==Nguc trai",
+      "vitridau==__NA__"
+     ],
+     "muc_giu": [
+      "Dau sau xuong uc",
+      "Hai ben nguc",
+      "Nguc phai",
+      "Nguc trai",
+      "__NA__"
+     ]
+    },
+    "daulan": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Co",
+      "Khong",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "daulan==Co",
+      "daulan==Khong",
+      "daulan==__NA__"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong",
+      "__NA__"
+     ]
+    },
+    "tcdau": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "De ep",
+      "Khac",
+      "Nhu dao dam",
+      "Xiet chat",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "tcdau==De ep",
+      "tcdau==Khac",
+      "tcdau==Nhu dao dam",
+      "tcdau==Xiet chat",
+      "tcdau==__NA__"
+     ],
+     "muc_giu": [
+      "De ep",
+      "Khac",
+      "Nhu dao dam",
+      "Xiet chat",
+      "__NA__"
+     ]
+    },
+    "n2": {
+     "kieu": "co_ghi (1 neu text chuan hoa khong thuoc NEG_TEXT)",
+     "dac_trung": [
+      "n2__co_ghi"
+     ]
+    },
+    "tgdau": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "tgdau",
+      "tgdau__thieu"
+     ]
+    },
+    "ytodau": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khac",
+      "Khi gang suc",
+      "Khi nghi ngoi",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "ytodau==Khac",
+      "ytodau==Khi gang suc",
+      "ytodau==Khi nghi ngoi",
+      "ytodau==__NA__"
+     ],
+     "muc_giu": [
+      "Khac",
+      "Khi gang suc",
+      "Khi nghi ngoi",
+      "__NA__"
+     ]
+    },
+    "n3": {
+     "kieu": "co_ghi (1 neu text chuan hoa khong thuoc NEG_TEXT)",
+     "dac_trung": [
+      "n3__co_ghi"
+     ]
+    },
+    "ytotang": {
+     "kieu": "co_ghi (1 neu text chuan hoa khong thuoc NEG_TEXT)",
+     "dac_trung": [
+      "ytotang__co_ghi"
+     ]
+    },
+    "chaymui": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "chaymui==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "khan": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "khan==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "khokhe": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "khokhe==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "dhkhac": {
+     "kieu": "co_ghi (1 neu text chuan hoa khong thuoc NEG_TEXT)",
+     "dac_trung": [
+      "dhkhac__co_ghi"
+     ]
+    },
+    "metmoi": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "metmoi==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "sutcan": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "sutcan==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "socansut": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "socansut",
+      "socansut__thieu"
+     ]
+    },
+    "tgsut": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "tgsut",
+      "tgsut__thieu"
+     ]
+    },
+    "longnguc": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong can doi"
+     ],
+     "dac_trung": [
+      "longnguc==Khong can doi"
+     ],
+     "muc_giu": [
+      "Can doi",
+      "Khong can doi"
+     ]
+    },
+    "khoangls": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Binh thuong",
+      "Gian rong",
+      "__hiem__"
+     ],
+     "dac_trung": [
+      "khoangls==Binh thuong",
+      "khoangls==Gian rong",
+      "khoangls==__hiem__"
+     ],
+     "muc_giu": [
+      "Binh thuong",
+      "Gian rong"
+     ]
+    },
+    "rungthan": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Binh thuong",
+      "Giam",
+      "__hiem__"
+     ],
+     "dac_trung": [
+      "rungthan==Binh thuong",
+      "rungthan==Giam",
+      "rungthan==__hiem__"
+     ],
+     "muc_giu": [
+      "Binh thuong",
+      "Giam"
+     ]
+    },
+    "go": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "__hiem__"
+     ],
+     "dac_trung": [
+      "go==__hiem__"
+     ],
+     "muc_giu": [
+      "Binh thuong"
+     ]
+    },
+    "riraopn": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Binh thuong",
+      "Giam",
+      "__hiem__"
+     ],
+     "dac_trung": [
+      "riraopn==Binh thuong",
+      "riraopn==Giam",
+      "riraopn==__hiem__"
+     ],
+     "muc_giu": [
+      "Binh thuong",
+      "Giam"
+     ]
+    },
+    "ran": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "Khong"
+     ],
+     "dac_trung": [
+      "ran==Khong"
+     ],
+     "muc_giu": [
+      "Co",
+      "Khong"
+     ]
+    },
+    "fvclt": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "fvclt"
+     ]
+    },
+    "fvctt": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "fvctt"
+     ]
+    },
+    "fev1lt": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "fev1lt"
+     ]
+    },
+    "fev1tt": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "fev1tt"
+     ]
+    },
+    "fvc": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "fvc"
+     ]
+    },
+    "fev1": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "fev1"
+     ]
+    },
+    "gaenler": {
+     "kieu": "so (NaN giu nguyen cho XGB)",
+     "dac_trung": [
+      "gaenler"
+     ]
+    },
+    "cviec_cap": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "1.0",
+      "10.0",
+      "2.0",
+      "3.0",
+      "4.0",
+      "5.0",
+      "6.0",
+      "7.0",
+      "8.0",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "cviec_cap==1.0",
+      "cviec_cap==10.0",
+      "cviec_cap==2.0",
+      "cviec_cap==3.0",
+      "cviec_cap==4.0",
+      "cviec_cap==5.0",
+      "cviec_cap==6.0",
+      "cviec_cap==7.0",
+      "cviec_cap==8.0",
+      "cviec_cap==__NA__"
+     ],
+     "muc_giu": [
+      "1.0",
+      "10.0",
+      "2.0",
+      "3.0",
+      "4.0",
+      "5.0",
+      "6.0",
+      "7.0",
+      "8.0",
+      "__NA__"
+     ]
+    },
+    "pxuong_cap": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "1.0",
+      "10.0",
+      "2.0",
+      "3.0",
+      "4.0",
+      "5.0",
+      "6.0",
+      "7.0",
+      "8.0",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "pxuong_cap==1.0",
+      "pxuong_cap==10.0",
+      "pxuong_cap==2.0",
+      "pxuong_cap==3.0",
+      "pxuong_cap==4.0",
+      "pxuong_cap==5.0",
+      "pxuong_cap==6.0",
+      "pxuong_cap==7.0",
+      "pxuong_cap==8.0",
+      "pxuong_cap==__NA__"
+     ],
+     "muc_giu": [
+      "1.0",
+      "10.0",
+      "2.0",
+      "3.0",
+      "4.0",
+      "5.0",
+      "6.0",
+      "7.0",
+      "8.0",
+      "__NA__"
+     ]
+    },
+    "cviec1_cap": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "1.0",
+      "10.0",
+      "2.0",
+      "3.0",
+      "4.0",
+      "5.0",
+      "6.0",
+      "8.0",
+      "9.0",
+      "__NA__"
+     ],
+     "dac_trung": [
+      "cviec1_cap==1.0",
+      "cviec1_cap==10.0",
+      "cviec1_cap==2.0",
+      "cviec1_cap==3.0",
+      "cviec1_cap==4.0",
+      "cviec1_cap==5.0",
+      "cviec1_cap==6.0",
+      "cviec1_cap==8.0",
+      "cviec1_cap==9.0",
+      "cviec1_cap==__NA__"
+     ],
+     "muc_giu": [
+      "1.0",
+      "10.0",
+      "2.0",
+      "3.0",
+      "4.0",
+      "5.0",
+      "6.0",
+      "8.0",
+      "9.0",
+      "__NA__"
+     ]
+    },
+    "cviec2_cap": {
+     "kieu": "one-hot; thieu='__NA__'; muc khong nam trong danh sach muc_giu (hiem <10 o dev) -> '__hiem__'",
+     "muc_one_hot": [
+      "1.0",
+      "5.0",
+      "__NA__",
+      "__hiem__"
+     ],
+     "dac_trung": [
+      "cviec2_cap==1.0",
+      "cviec2_cap==5.0",
+      "cviec2_cap==__NA__",
+      "cviec2_cap==__hiem__"
+     ],
+     "muc_giu": [
+      "1.0",
+      "5.0",
+      "__NA__"
+     ]
+    }
+   }
+  },
+  "nguong_tho": {
+   "bien_an_toan_0.80": 0.051546,
+   "do_nhay_0.80": 0.057904,
+   "do_nhay_0.90": 0.042035
+  },
+  "nguong_dung": "bien_an_toan_0.80: bao nguy co neu xac suat >= nguong"
+ },
+ "anh_bioviL_t_448": {
+  "backbone": "microsoft/BiomedVLP-BioViL-T (biovil_t_image_model_proj_size_128.pt), dau Dropout0.2+Linear(512,1)",
+  "file": {
+   "biovil_t_448_seed0.pt": "cache/mo_hinh_cuoi/biovil_t_448_seed0.pt",
+   "biovil_t_448_seed1.pt": "cache/mo_hinh_cuoi/biovil_t_448_seed1.pt",
+   "biovil_t_448_seed2.pt": "cache/mo_hinh_cuoi/biovil_t_448_seed2.pt"
+  },
+  "sha256": {
+   "biovil_t_448_seed0.pt": "ff12a02504e4b39dc2d22d54a4a179b4d7cd7cc8869282bb87f48ceb79146d15",
+   "biovil_t_448_seed1.pt": "4525e9b39c3e2830c64b8690475f48078abaf1ae118872dd69a82072d9e6dec3",
+   "biovil_t_448_seed2.pt": "f418e73b815f330d01e3402f0a991a066c1819396d9f04e590507b9906511223"
+  },
+  "hoc": {
+   "epochs": 4,
+   "cosine_horizon": 20,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "batch": 12,
+   "lr_backbone": 3e-05,
+   "lr_head": 0.001,
+   "wd": 0.05,
+   "tang_cuong": "xoay +-7, ti le +-5%, dich +-10%, sang/tuong phan +-10%",
+   "hoc_tren": "toan bo 1.453 anh dev (bo 59 ca anh_loai.csv)"
+  },
+  "tien_xu_ly": "xam; canh ngan->512 bilinear; cat giua 512x512; cat phan vi 0.5-99.5 tung anh -> uint8; /255; resize 448 bilinear antialias; lap 3 kenh",
+  "diem": "trung binh xac suat sigmoid cua 3 seed (tb3)"
+ },
+ "ghep_gon": {
+  "cong_thuc": "p = sigmoid(w_anh*logit(p_anh_tb3) + w_ls*logit(p_lam_sang_app) + b), logit cat [1e-6, 1-1e-6]",
+  "he_so": {
+   "C": 0.3,
+   "w_logit_anh": 0.901645,
+   "w_logit_lam_sang": 0.249384,
+   "b": 0.016646
+  },
+  "hoc_tren": "OOF dev 1.453 ca cua CHINH cong thuc cuoi (anh = tb3 4ep x 3 seed theo fold, cache/buoc6c_oof_4ep_3seed.csv; lam sang = c_app OOF)",
+  "nguong_tho": {
+   "bien_an_toan_0.80": 0.207134,
+   "do_nhay_0.80": 0.227636,
+   "do_nhay_0.90": 0.138128
+  },
+  "nguong_dung": "bien_an_toan_0.80",
+  "user_chon": "ban thay the (08/11/2026)",
+  "tham_chieu_khong_dung": {
+   "hoc_tren": "OOF 4b dung som 1 seed",
+   "he_so": {
+    "C": 1.0,
+    "w_logit_anh": 0.686528,
+    "w_logit_lam_sang": 0.290972,
+    "b": 0.085695
+   },
+   "nguong_tho": {
+    "bien_an_toan_0.80": 0.220034,
+    "do_nhay_0.80": 0.232196,
+    "do_nhay_0.90": 0.171635
+   }
+  }
+ },
+ "sha256": {
+  "split.csv": "a8fc7cad8002511503bca67fb9515cd07478a8fdcc5bac4438b283a55d48e9b0",
+  "anh_loai.csv": "316ab05449436c35b6c1f405fab9d59735b05d0b97e047dfa511c773e75de1a3",
+  "bien.csv": "0f645eb6477a81c1c3bed80585c314debf9ec40762ef048a28f3543e2c845fcf",
+  "Main_data_Merged_1835_Images.xlsx": "efdea2bcd044002a723f1ad40fc3fcc299492bd6d9a840a12facaef6bff323a4",
+  "cache/nghe_10cap.csv": "86e20e84a5712724fd308e001c0b0e5ec86469d23f98f701cb616a8233a07fa5",
+  "cache/anh512_dev.npz": "2d92a1dfeece745c19495045df89af79e1db44427f100ec4404f301f0e6e8c5e",
+  "cache/buoc4b_oof_biovil_t_448.csv": "e1e624854febd4f8e6b17982736e008ed366c53759df5c16b7df2772189ec384",
+  "cache/buoc6c_oof_4ep_3seed.csv": "3e5b0fde641c5fcc0f5d9f6c53887fea39a6f7e4f24071020dddcaac37f74a92",
+  "cache/buoc6c_dev_trong_mau.csv": "9f53e09f94174fbc7478f25c0fe06f5151e221d7c31bc72fe3b6b5e5304ca6d6",
+  "scripts/buoc1_chuan_bi.py": "87121e4304cb291a4f812c64acb8ca50faba56962ed40a86dbda56d7d7b62a85",
+  "scripts/buoc2_lam_sang.py": "81df7ef28024129d5c5941334d64237b92e9a56fe1383ae73ab8e577d756adfd",
+  "scripts/buoc4_cache_anh.py": "cccee7723cb62c3a6913094647163dc407887c4ed499d6bc652e1e0a6e6f99fb",
+  "scripts/buoc6c_bioviL_cuoi.py": "13182498e16db4aa25cb97661cadd1e3118d25ae8280c978cc03e9d0c55f11c9",
+  "scripts/buoc6d_chot.py": "435c76f74a06c9f32e42186c80a5939bb698482af207dc45d1119f80ac7bb88a"
+ }
+}

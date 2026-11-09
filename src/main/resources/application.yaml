@@ -53,7 +53,7 @@ app:
   patient:
     max-text-length: ${APP_PATIENT_MAX_TEXT_LENGTH:2000}
   visit:
-    extra-max-size: ${APP_VISIT_EXTRA_MAX_SIZE:8KB}
+    extra-max-size: ${APP_VISIT_EXTRA_MAX_SIZE:32KB}
     extra-max-depth: ${APP_VISIT_EXTRA_MAX_DEPTH:3}
   predict:
     enabled: ${PREDICT_ENABLED:true}

@@ -29,6 +29,8 @@ import com.sillicosis.backend.image.Image;
 import com.sillicosis.backend.image.ImageRepository;
 import com.sillicosis.backend.patient.Patient;
 import com.sillicosis.backend.patient.PatientService;
+import com.sillicosis.backend.prediction.ClinicalValidator;
+import com.sillicosis.backend.prediction.PredictClient;
 import com.sillicosis.backend.prediction.PredictionService;
 import com.sillicosis.backend.user.Gender;
 import com.sillicosis.backend.visit.dto.VisitRequest;
@@ -58,8 +60,13 @@ class VisitServiceTest {
 		visitRepository = mock(VisitRepository.class);
 		imageRepository = mock(ImageRepository.class);
 		patientService = mock(PatientService.class);
+		PredictClient predictClient = mock(PredictClient.class);
+		// Schema giả rút gọn, cùng dạng GET /schema của FastAPI.
+		when(predictClient.schema()).thenReturn(Optional.of(new PredictClient.Schema(
+				Map.of("ho", "muc", "theluc", "muc", "fvc", "so", "cviec", "chu"),
+				Map.of("ho", List.of("Co", "Khong"), "theluc", List.of("1", "2", "3")))));
 		visitService = new VisitService(visitRepository, imageRepository, patientService,
-				mock(PredictionService.class), JsonMapper.builder().build(),
+				mock(PredictionService.class), new ClinicalValidator(predictClient), JsonMapper.builder().build(),
 				TestProps.defaults(), Clock.fixed(NOW, ZoneOffset.UTC));
 
 		patient = new Patient();
@@ -129,6 +136,22 @@ class VisitServiceTest {
 	}
 
 	@Test
+	void lamSangCheckedAgainstModelSchema() {
+		VisitResponse ok = visitService.create(actorId, false, patient.getId(), request(b -> b.extra(
+				Map.of("lam_sang", Map.of("ho", "Co", "theluc", 2, "fvc", "3,2", "cviec", "cong nhan")))));
+		assertThat(ok.extra()).containsKey("lam_sang");
+		assertThatThrownBy(() -> visitService.create(actorId, false, patient.getId(), request(b -> b.extra(
+				Map.of("lam_sang", Map.of("ho", "Có", "theluc", 7, "fvc", "abc", "tinh", "x", "cviec", "y".repeat(501)))))))
+			.isInstanceOfSatisfying(InvalidFieldsException.class,
+					ex -> assertThat(ex.getFieldErrors()).containsOnlyKeys("extra.lam_sang.ho", "extra.lam_sang.theluc",
+							"extra.lam_sang.fvc", "extra.lam_sang.tinh", "extra.lam_sang.cviec"));
+		assertThatThrownBy(() -> visitService.create(actorId, false, patient.getId(),
+				request(b -> b.extra(Map.of("lam_sang", List.of(1))))))
+			.isInstanceOfSatisfying(InvalidFieldsException.class,
+					ex -> assertThat(ex.getFieldErrors()).containsOnlyKeys("extra.lam_sang"));
+	}
+
+	@Test
 	void extraMustBeSmallShallowObject() {
 		assertThatThrownBy(() -> visitService.create(actorId, false, patient.getId(),
 				request(b -> b.extra(List.of(1, 2)))))
@@ -138,7 +161,7 @@ class VisitServiceTest {
 				request(b -> b.extra(Map.of("a", Map.of("b", Map.of("c", Map.of("d", 1))))))))
 			.isInstanceOf(InvalidFieldsException.class);
 		assertThatThrownBy(() -> visitService.create(actorId, false, patient.getId(),
-				request(b -> b.extra(Map.of("note", "x".repeat(9000))))))
+				request(b -> b.extra(Map.of("note", "x".repeat(40000))))))
 			.isInstanceOf(InvalidFieldsException.class);
 
 		VisitResponse ok = visitService.create(actorId, false, patient.getId(),

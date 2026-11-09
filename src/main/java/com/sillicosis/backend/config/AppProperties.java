@@ -50,7 +50,7 @@ public record AppProperties(@DefaultValue Jwt jwt, @DefaultValue Security securi
 	 * @param extraMaxSize kích thước tối đa của {@code extra} khi viết thành JSON
 	 * @param extraMaxDepth số cấp lồng tối đa, tính cả chính {@code extra}
 	 */
-	public record Visit(@DefaultValue("8KB") DataSize extraMaxSize, @DefaultValue("3") int extraMaxDepth) {
+	public record Visit(@DefaultValue("32KB") DataSize extraMaxSize, @DefaultValue("3") int extraMaxDepth) {
 	}
 
 	/**

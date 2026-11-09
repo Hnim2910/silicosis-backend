@@ -40,23 +40,39 @@ public class PredictionService {
 		return props.predict().enabled();
 	}
 
-	/** Gọi service rồi ghi một dòng predictions, kể cả khi lỗi (FAILED + errorCode). */
-	public PredictionResponse run(UUID visitId, UUID imageId, UUID actorId) {
-		Image image = imageRepository.findByIdAndDeletedAtIsNull(imageId)
-			.orElseThrow(() -> ApiException.notFound("Không tìm thấy ảnh."));
+	/**
+	 * Gọi service New Way rồi ghi một dòng predictions, kể cả khi lỗi (FAILED + errorCode). {@code imageId} null = chỉ
+	 * lâm sàng; {@code lamSang} là {@code visits.extra["lam_sang"]} (null/không phải object coi như rỗng).
+	 */
+	public PredictionResponse run(UUID visitId, UUID imageId, Object lamSang, UUID actorId) {
+		Image image = imageId == null ? null
+				: imageRepository.findByIdAndDeletedAtIsNull(imageId)
+					.orElseThrow(() -> ApiException.notFound("Không tìm thấy ảnh."));
 		Prediction p = new Prediction();
 		p.setVisitId(visitId);
 		p.setImageId(imageId);
 		p.setCreatedBy(actorId);
 		long started = System.nanoTime();
 		try {
-			PredictClient.Result r = predictClient.predict(read(image), image.getContentType());
+			PredictClient.Outcome o = image == null ? predictClient.predict(asMap(lamSang), null, null)
+					: predictClient.predict(asMap(lamSang), read(image), image.getContentType());
+			PredictClient.Result r = o.result();
 			p.setStatus(PredictionStatus.SUCCESS);
-			p.setProbability(r.probability());
-			p.setLabel(r.label());
-			p.setThreshold(r.threshold());
-			p.setModelName(r.modelName());
-			p.setModelVersion(r.modelVersion());
+			// Cột cũ = kết luận cuối, để client cũ và ràng buộc V2 vẫn đúng.
+			p.setProbability(r.finalProbability());
+			p.setThreshold(r.finalThreshold());
+			p.setLabel(r.ketLuanCuoi() ? "Co" : "Khong");
+			p.setModelName(o.modelName());
+			p.setModelVersion(o.modelVersion());
+			p.setPLamSang(r.pLamSang());
+			p.setNguongLamSang(r.nguongLamSang());
+			p.setBaoNguyCoLamSang(r.baoNguyCoLamSang());
+			p.setCoAnh(r.coAnh());
+			p.setPAnh(r.pAnh());
+			p.setPGhep(r.pGhep());
+			p.setNguongGhep(r.nguongGhep());
+			p.setBaoNguyCoGhep(r.baoNguyCoGhep());
+			p.setKetLuanCuoi(r.ketLuanCuoi());
 		}
 		catch (PredictException ex) {
 			p.setStatus(PredictionStatus.FAILED);
@@ -84,6 +100,11 @@ public class PredictionService {
 
 	public static ApiException disabled() {
 		return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "PREDICT_DISABLED", "Chức năng dự đoán đang tắt.");
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> asMap(Object lamSang) {
+		return lamSang instanceof Map<?, ?> m ? (Map<String, Object>) m : Map.of();
 	}
 
 	private byte[] read(Image image) {

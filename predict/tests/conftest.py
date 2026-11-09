@@ -12,10 +12,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.config import Settings  # noqa: E402
 from app.main import create_app  # noqa: E402
+from app.new_way import resolve_dir  # noqa: E402
 
-MODEL_PATH = os.environ.get("MODEL_PATH") or Settings().model_path
-HAS_MODEL = bool(MODEL_PATH) and Path(MODEL_PATH).is_file()
-needs_model = pytest.mark.skipif(not HAS_MODEL, reason="không có checkpoint (MODEL_PATH)")
+MODEL_DIR = os.environ.get("NEW_WAY_DIR") or Settings().new_way_dir
+HAS_MODEL = (resolve_dir(MODEL_DIR) / "mo_hinh" / "lam_sang_app_xgb.json").is_file()
+needs_model = pytest.mark.skipif(not HAS_MODEL, reason="không có gói model New Way (ml/new_way/mo_hinh)")
+
+# Bản ghi GIẢ, tự đặt — không phải bệnh nhân thật.
+FAKE_RECORD = {
+    "gioitinh": "Nam", "namsinh": 1975, "tuoinghe": "12", "cv5nam": "Co",
+    "cviec": "cong nhan nghien da", "pxuong": "phan xuong nghien", "cviec1": "", "cviec2": None,
+    "tgian1": "8,5", "cao": 165, "can": "60,5", "hatd": 80, "hatt": 125, "mach": 76, "theluc": 2,
+    "hutthuoc": "Co hut thuoc", "slthuoc": 10, "tiensuhh": "Khong", "benhhh": "",
+    "ho": "Co", "tdho": "Ban ngay", "tsho": "Tung con", "khacdom": "Khong",
+    "khotho": "Co", "mdkhotho": "Kho tho khi gang suc", "tdkhotho": "Ban ngay",
+    "daunguc": "Khong", "ran": "Khong", "longnguc": "Can doi",
+    "fvc": "3,2", "fev1": 2.6, "gaenler": 81,
+}
 
 
 def fake_xray(size=(300, 300), fmt="PNG", mode="L") -> bytes:
@@ -36,15 +49,16 @@ def fake_xray(size=(300, 300), fmt="PNG", mode="L") -> bytes:
 @pytest.fixture(scope="session")
 def client():
     if not HAS_MODEL:
-        pytest.skip("không có checkpoint (MODEL_PATH)")
-    app = create_app(Settings(model_path=MODEL_PATH, device="cpu"))
+        pytest.skip("không có gói model New Way")
+    app = create_app(Settings(new_way_dir=MODEL_DIR, device=os.environ.get("TEST_DEVICE", "auto"),
+                              preload_image_model=False, max_upload_mb=1))
     with TestClient(app) as c:
         yield c
 
 
 @pytest.fixture(scope="session")
-def client_no_model():
-    """Không nạp model: dùng cho các lỗi đầu vào (kiểm tra trước khi cần model)."""
-    app = create_app(Settings(model_path="", max_upload_mb=1))
+def client_no_model(tmp_path_factory):
+    """Không nạp được model: thư mục rỗng."""
+    app = create_app(Settings(new_way_dir=str(tmp_path_factory.mktemp("empty")), max_upload_mb=1))
     with TestClient(app) as c:
         yield c

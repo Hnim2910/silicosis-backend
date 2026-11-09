@@ -29,6 +29,7 @@ import com.sillicosis.backend.image.Image;
 import com.sillicosis.backend.image.ImageRepository;
 import com.sillicosis.backend.patient.Patient;
 import com.sillicosis.backend.patient.PatientService;
+import com.sillicosis.backend.prediction.ClinicalValidator;
 import com.sillicosis.backend.prediction.PredictionService;
 import com.sillicosis.backend.prediction.dto.PredictionResponse;
 import com.sillicosis.backend.visit.dto.VisitRequest;
@@ -49,6 +50,7 @@ public class VisitService {
 	private final ImageRepository imageRepository;
 	private final PatientService patientService;
 	private final PredictionService predictionService;
+	private final ClinicalValidator clinicalValidator;
 	private final JsonMapper jsonMapper;
 	private final AppProperties props;
 	private final Clock clock;
@@ -212,6 +214,10 @@ public class VisitService {
 		String extraError = checkExtra(req.extra(), extra);
 		if (extraError != null) {
 			errors.put("extra", extraError);
+		}
+		else {
+			// Lâm sàng cho model New Way: extra.lam_sang = {tên_cột: mã không dấu}.
+			errors.putAll(clinicalValidator.validate(extra.get(ClinicalValidator.KEY)));
 		}
 		if (!errors.isEmpty()) {
 			throw new InvalidFieldsException(errors);

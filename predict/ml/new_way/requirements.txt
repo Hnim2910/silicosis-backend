@@ -1,0 +1,8 @@
+# Phien ban dung luc hoc / cham (Python 3.13). Lech phien ban xgboost/torch co the doi diem nho.
+numpy==2.2.2
+pandas==2.2.3
+xgboost==3.4.1
+torch==2.6.0
+pillow==11.1.0
+hi-ml-multimodal==0.2.2
+# KHONG cai unidecode cung duoc; nghe.py da tat unidecode co chu dich.

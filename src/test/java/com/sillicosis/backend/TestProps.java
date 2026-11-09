@@ -23,7 +23,7 @@ public final class TestProps {
 				new AppProperties.Storage(System.getProperty("java.io.tmpdir"),
 						org.springframework.util.unit.DataSize.ofMegabytes(10), 256, 8000),
 				new AppProperties.Patient(2000),
-				new AppProperties.Visit(org.springframework.util.unit.DataSize.ofKilobytes(8), 3),
+				new AppProperties.Visit(org.springframework.util.unit.DataSize.ofKilobytes(32), 3),
 				new AppProperties.Predict(false, "http://localhost:8001", Duration.ofSeconds(30), Duration.ofSeconds(3)));
 	}
 

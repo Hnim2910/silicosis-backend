@@ -16,6 +16,9 @@ class PredictException extends RuntimeException {
 
 	static final String IMAGE_UNREADABLE = "PREDICT_IMAGE_UNREADABLE";
 
+	/** FastAPI trả 422: dữ liệu lâm sàng sai (mã phân loại lạ, không phải số…). */
+	static final String INVALID_INPUT = "PREDICT_INVALID_INPUT";
+
 	private final String code;
 
 	PredictException(String code) {

@@ -54,8 +54,8 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 /**
- * Dự đoán qua một server HTTP giả (JDK HttpServer) thay cho service FastAPI; Postgres thật (Testcontainers). Dữ liệu
- * đều là dữ liệu giả.
+ * Dự đoán New Way qua một server HTTP giả (JDK HttpServer) thay cho service FastAPI; Postgres thật
+ * (Testcontainers). Dữ liệu đều là dữ liệu giả.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -66,18 +66,33 @@ class PredictionApiIntegrationTest {
 
 	private static final Path IMAGE_DIR = temporaryImageDirectory();
 
-	private static final String OK_BODY = """
-			{"probability":0.73,"label":"Co","threshold":0.403,"model_version":"abc123def456",
-			 "model_name":"Model giả","experimental":true,"disclaimer":"x"}
+	/** Dict giả cùng dạng MoHinh.du_doan() (predict/ml/new_way/MO_TA_API.md). */
+	private static final String OK_IMAGE = """
+			{"nhan":"ketqua","p_lam_sang":0.2,"nguong_lam_sang":0.051546,"bao_nguy_co_lam_sang":true,"co_anh":true,
+			 "p_anh":0.6,"p_ghep":0.55,"nguong_ghep":0.207134,"bao_nguy_co_ghep":true,"ket_luan_cuoi":true}
 			""";
 
-	/** Hành vi của server giả: ok, slow, error500, reject400, garbage. */
+	private static final String OK_CLINICAL = """
+			{"nhan":"ketqua","p_lam_sang":0.03,"nguong_lam_sang":0.051546,"bao_nguy_co_lam_sang":false,"co_anh":false,
+			 "p_anh":null,"p_ghep":null,"nguong_ghep":null,"bao_nguy_co_ghep":null,"ket_luan_cuoi":false}
+			""";
+
+	private static final String SCHEMA = """
+			{"kind":{"ho":"muc","fvc":"so","cviec":"chu"},"levels":{"ho":["Co","Khong"]}}
+			""";
+
+	private static final String LAM_SANG = """
+			{"ho":"Co","fvc":"3,2","cviec":"cong nhan"}""";
+
+	/** Hành vi của server giả: ok, slow, error500, reject400, reject422, garbage, noversion. */
 	private static final AtomicReference<String> MODE = new AtomicReference<>("ok");
 
 	private static final AtomicInteger CALLS = new AtomicInteger();
 
-	/** Phần multipart "file" có filename và Content-Type ảnh. */
+	/** Yêu cầu đúng dạng: multipart có "lam_sang" + "file" (filename, Content-Type ảnh), hoặc JSON object. */
 	private static final AtomicBoolean WELL_FORMED = new AtomicBoolean();
+
+	private static final AtomicReference<String> LAST_PATH = new AtomicReference<>();
 
 	private static final HttpServer SERVER = startServer();
 
@@ -110,15 +125,22 @@ class PredictionApiIntegrationTest {
 		String patientId = myPatientId(token);
 		String imageId = upload(token, 300, 300);
 
-		// Gửi lượt khám kèm ảnh → dự đoán ngay, kết quả trong latestPrediction
+		// Gửi lượt khám kèm ảnh + lâm sàng → gọi /predict/clinical-image, kết quả trong latestPrediction
 		int before = CALLS.get();
 		String body = authed(post("/api/patients/" + patientId + "/visits"), token,
-				"{\"imageId\":\"%s\",\"pulse\":80}".formatted(imageId))
+				"{\"imageId\":\"%s\",\"extra\":{\"lam_sang\":%s}}".formatted(imageId, LAM_SANG))
 			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.extra.lam_sang.ho").value("Co"))
 			.andExpect(jsonPath("$.latestPrediction.status").value("SUCCESS"))
-			.andExpect(jsonPath("$.latestPrediction.probability").value(0.73))
+			.andExpect(jsonPath("$.latestPrediction.coAnh").value(true))
+			.andExpect(jsonPath("$.latestPrediction.pLamSang").value(0.2))
+			.andExpect(jsonPath("$.latestPrediction.pAnh").value(0.6))
+			.andExpect(jsonPath("$.latestPrediction.pGhep").value(0.55))
+			.andExpect(jsonPath("$.latestPrediction.nguongGhep").value(0.207134))
+			.andExpect(jsonPath("$.latestPrediction.ketLuanCuoi").value(true))
+			.andExpect(jsonPath("$.latestPrediction.probability").value(0.55))
+			.andExpect(jsonPath("$.latestPrediction.threshold").value(0.207134))
 			.andExpect(jsonPath("$.latestPrediction.label").value("Co"))
-			.andExpect(jsonPath("$.latestPrediction.threshold").value(0.403))
 			.andExpect(jsonPath("$.latestPrediction.modelVersion").value("abc123def456"))
 			.andExpect(jsonPath("$.latestPrediction.imageId").value(imageId))
 			.andExpect(jsonPath("$.latestPrediction.experimental").value(true))
@@ -128,6 +150,7 @@ class PredictionApiIntegrationTest {
 		String visitId = JsonPath.read(body, "$.id");
 		String first = JsonPath.read(body, "$.latestPrediction.id");
 		assertThat(CALLS.get()).isEqualTo(before + 1);
+		assertThat(LAST_PATH.get()).isEqualTo("/predict/clinical-image");
 		assertThat(WELL_FORMED).isTrue();
 
 		authed(get("/api/visits/" + visitId), token, null).andExpect(jsonPath("$.latestPrediction.id").value(first));
@@ -152,12 +175,18 @@ class PredictionApiIntegrationTest {
 		authed(post("/api/visits/" + visitId + "/predictions"), register("Người Lạ Dự Đoán"), null)
 			.andExpect(status().isNotFound());
 
-		// Gỡ ảnh → không còn kết quả; dự đoán lại → 400
+		// Gỡ ảnh → dự đoán lại chỉ từ lâm sàng (/predict/clinical)
 		authed(delete("/api/visits/" + visitId + "/image"), token, null).andExpect(status().isNoContent());
-		authed(get("/api/visits/" + visitId), token, null).andExpect(jsonPath("$.latestPrediction").doesNotExist());
-		authed(post("/api/visits/" + visitId + "/predictions"), token, null)
-			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value("VISIT_HAS_NO_IMAGE"));
+		assertThat(LAST_PATH.get()).isEqualTo("/predict/clinical");
+		assertThat(WELL_FORMED).isTrue();
+		authed(get("/api/visits/" + visitId), token, null)
+			.andExpect(jsonPath("$.latestPrediction.status").value("SUCCESS"))
+			.andExpect(jsonPath("$.latestPrediction.coAnh").value(false))
+			.andExpect(jsonPath("$.latestPrediction.imageId").doesNotExist())
+			.andExpect(jsonPath("$.latestPrediction.pGhep").doesNotExist())
+			.andExpect(jsonPath("$.latestPrediction.ketLuanCuoi").value(false))
+			.andExpect(jsonPath("$.latestPrediction.label").value("Khong"))
+			.andExpect(jsonPath("$.latestPrediction.threshold").value(0.051546));
 
 		// Gắn ảnh mới qua PUT → dự đoán cho ảnh mới
 		String other = upload(token, 310, 300);
@@ -166,12 +195,45 @@ class PredictionApiIntegrationTest {
 			.andExpect(jsonPath("$.latestPrediction.status").value("SUCCESS"))
 			.andExpect(jsonPath("$.latestPrediction.imageId").value(other));
 
-		// Lượt khám chỉ có chỉ số lâm sàng: không gọi service
-		int beforeClinical = CALLS.get();
-		authed(post("/api/patients/" + patientId + "/visits"), token, "{\"pulse\":70}")
+		// Sửa lượt khám → dự đoán lại
+		int beforeUpdate = CALLS.get();
+		authed(put("/api/visits/" + visitId), token, "{\"extra\":{\"lam_sang\":{\"ho\":\"Khong\"}}}")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.latestPrediction.imageId").value(other));
+		assertThat(CALLS.get()).isEqualTo(beforeUpdate + 1);
+
+		// Chỉ lâm sàng ngay khi tạo
+		authed(post("/api/patients/" + patientId + "/visits"), token,
+				"{\"extra\":{\"lam_sang\":%s}}".formatted(LAM_SANG))
 			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.latestPrediction").doesNotExist());
-		assertThat(CALLS.get()).isEqualTo(beforeClinical);
+			.andExpect(jsonPath("$.latestPrediction.status").value("SUCCESS"))
+			.andExpect(jsonPath("$.latestPrediction.coAnh").value(false))
+			.andExpect(jsonPath("$.latestPrediction.pLamSang").value(0.03));
+
+		// Không có ảnh lẫn lâm sàng (chỉ cột cũ): không gọi service; dự đoán thủ công → 400
+		int beforeEmpty = CALLS.get();
+		String bare = JsonPath.read(authed(post("/api/patients/" + patientId + "/visits"), token, "{\"pulse\":70}")
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.latestPrediction").doesNotExist())
+			.andReturn().getResponse().getContentAsString(), "$.id");
+		assertThat(CALLS.get()).isEqualTo(beforeEmpty);
+		authed(post("/api/visits/" + bare + "/predictions"), token, null)
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("VISIT_HAS_NO_INPUT"));
+	}
+
+	@Test
+	void invalidClinicalCodesRejectedBeforeSaving() throws Exception {
+		String token = register("Người Thử Mã Sai");
+		String patientId = myPatientId(token);
+		int before = CALLS.get();
+		authed(post("/api/patients/" + patientId + "/visits"), token,
+				"{\"extra\":{\"lam_sang\":{\"ho\":\"Có\",\"fvc\":\"abc\",\"tinh\":\"x\"}}}")
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.fieldErrors['extra.lam_sang.ho']").exists())
+			.andExpect(jsonPath("$.fieldErrors['extra.lam_sang.fvc']").exists())
+			.andExpect(jsonPath("$.fieldErrors['extra.lam_sang.tinh']").exists());
+		assertThat(CALLS.get()).isEqualTo(before);
 	}
 
 	@Test
@@ -191,7 +253,9 @@ class PredictionApiIntegrationTest {
 
 		assertRerunFails(token, visitId, "slow", "PREDICT_TIMEOUT");
 		assertRerunFails(token, visitId, "garbage", "PREDICT_BAD_RESPONSE");
+		assertRerunFails(token, visitId, "noversion", "PREDICT_BAD_RESPONSE");
 		assertRerunFails(token, visitId, "reject400", "PREDICT_IMAGE_REJECTED");
+		assertRerunFails(token, visitId, "reject422", "PREDICT_INVALID_INPUT");
 
 		// Service chạy lại bình thường → thành công, trở thành kết quả mới nhất
 		MODE.set("ok");
@@ -240,7 +304,8 @@ class PredictionApiIntegrationTest {
 		try {
 			HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
 			server.setExecutor(Executors.newCachedThreadPool());
-			server.createContext("/predict", PredictionApiIntegrationTest::handle);
+			server.createContext("/predict/", PredictionApiIntegrationTest::handle);
+			server.createContext("/schema", ex -> respond(ex, 200, SCHEMA, true));
 			server.start();
 			return server;
 		}
@@ -251,11 +316,18 @@ class PredictionApiIntegrationTest {
 
 	private static void handle(HttpExchange exchange) throws IOException {
 		CALLS.incrementAndGet();
-		String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.ISO_8859_1);
+		String path = exchange.getRequestURI().getPath();
+		LAST_PATH.set(path);
+		String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		String type = exchange.getRequestHeaders().getFirst("Content-Type");
+		boolean image = "/predict/clinical-image".equals(path);
 		// uvicorn từ chối yêu cầu có "Upgrade: h2c" (400), server JDK thì không: kiểm tra ở đây.
-		WELL_FORMED.set(exchange.getRequestHeaders().getFirst("Upgrade") == null
-				&& exchange.getRequestHeaders().getFirst("Content-Type").startsWith("multipart/form-data")
-				&& request.contains("name=\"file\"; filename=\"image.png\"") && request.contains("Content-Type: image/png"));
+		WELL_FORMED.set(exchange.getRequestHeaders().getFirst("Upgrade") == null && type != null && (image
+				? type.startsWith("multipart/form-data") && request.contains("name=\"lam_sang\"")
+						&& request.contains("name=\"file\"; filename=\"image.png\"")
+						&& request.contains("Content-Type: image/png")
+				: type.startsWith("application/json") && request.startsWith("{")));
+		String ok = image ? OK_IMAGE : OK_CLINICAL;
 		switch (MODE.get()) {
 			case "slow" -> {
 				try {
@@ -264,18 +336,23 @@ class PredictionApiIntegrationTest {
 				catch (InterruptedException ex) {
 					Thread.currentThread().interrupt();
 				}
-				respond(exchange, 200, OK_BODY);
+				respond(exchange, 200, ok, true);
 			}
-			case "error500" -> respond(exchange, 503, "{\"code\":\"MODEL_NOT_LOADED\",\"message\":\"x\"}");
-			case "reject400" -> respond(exchange, 400, "{\"code\":\"INVALID_IMAGE\",\"message\":\"x\"}");
-			case "garbage" -> respond(exchange, 200, "{\"probability\":1.7,\"label\":\"maybe\"}");
-			default -> respond(exchange, 200, OK_BODY);
+			case "error500" -> respond(exchange, 503, "{\"code\":\"MODEL_NOT_LOADED\",\"message\":\"x\"}", true);
+			case "reject400" -> respond(exchange, 400, "{\"code\":\"INVALID_IMAGE\",\"message\":\"x\"}", true);
+			case "reject422" -> respond(exchange, 422, "{\"code\":\"INVALID_INPUT\",\"message\":\"x\"}", true);
+			case "garbage" -> respond(exchange, 200, "{\"p_lam_sang\":1.7,\"co_anh\":true}", true);
+			case "noversion" -> respond(exchange, 200, ok, false);
+			default -> respond(exchange, 200, ok, true);
 		}
 	}
 
-	private static void respond(HttpExchange exchange, int status, String json) throws IOException {
+	private static void respond(HttpExchange exchange, int status, String json, boolean version) throws IOException {
 		byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
 		exchange.getResponseHeaders().set("Content-Type", "application/json");
+		if (version) {
+			exchange.getResponseHeaders().set("X-Model-Version", "abc123def456");
+		}
 		try {
 			exchange.sendResponseHeaders(status, bytes.length);
 			try (OutputStream out = exchange.getResponseBody()) {

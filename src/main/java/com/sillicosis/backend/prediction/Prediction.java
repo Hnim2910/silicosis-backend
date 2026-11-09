@@ -33,8 +33,40 @@ public class Prediction {
 	@Column(name = "visit_id", nullable = false, updatable = false)
 	private UUID visitId;
 
-	@Column(name = "image_id", nullable = false, updatable = false)
+	/** Null: dự đoán New Way chỉ từ lâm sàng (không có phim). */
+	@Column(name = "image_id", updatable = false)
 	private UUID imageId;
+
+	/** LEGACY (model ảnh cũ, nhãn bnn) hoặc NEW_WAY (nhãn ketqua). */
+	@Column(nullable = false, length = 20, updatable = false)
+	private String engine = PredictClient.ENGINE;
+
+	@Column(name = "p_lam_sang")
+	private Double pLamSang;
+
+	@Column(name = "nguong_lam_sang")
+	private Double nguongLamSang;
+
+	@Column(name = "bao_nguy_co_lam_sang")
+	private Boolean baoNguyCoLamSang;
+
+	@Column(name = "co_anh")
+	private Boolean coAnh;
+
+	@Column(name = "p_anh")
+	private Double pAnh;
+
+	@Column(name = "p_ghep")
+	private Double pGhep;
+
+	@Column(name = "nguong_ghep")
+	private Double nguongGhep;
+
+	@Column(name = "bao_nguy_co_ghep")
+	private Boolean baoNguyCoGhep;
+
+	@Column(name = "ket_luan_cuoi")
+	private Boolean ketLuanCuoi;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 10)

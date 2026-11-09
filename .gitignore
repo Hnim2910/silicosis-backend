@@ -43,3 +43,7 @@ predict/**/*.pt
 predict/.venv/
 predict/**/__pycache__/
 predict/.pytest_cache/
+# Model New Way: chỉ commit code + cấu hình, KHÔNG commit trọng số (~330 MB)
+predict/ml/new_way/mo_hinh/
+predict/**/mo_hinh/
+predict/**/*.pt

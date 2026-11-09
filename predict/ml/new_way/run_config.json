@@ -1,0 +1,39 @@
+{
+ "lenh": "C:\\Python313\\python.exe scripts/buoc8_xuat.py",
+ "thoi_gian": "2026-11-08 21:12:23",
+ "giay": 35,
+ "python": "3.13.2",
+ "torch": "2.6.0+cu124",
+ "xgboost": "3.4.1",
+ "sklearn": "1.7.2",
+ "numpy": "2.2.2",
+ "pandas": "2.2.3",
+ "pillow": "11.1.0",
+ "kiem_tra": {
+  "nghe_py_trung_nghe_10cap_8030_dong": true,
+  "p_lam_sang_sai_max_1347_test": 1.4059829689383463e-08,
+  "p_anh_sai_max_323_test": 9.8879238130678e-17,
+  "p_ghep_sai_max_323_test": 3.971927786672325e-09,
+  "du_doan_tung_luot_p_ghep_sai_max_8_luot": 0.0001288068338277104,
+  "du_doan_khong_anh_tra_ve_khoa": [
+   "bao_nguy_co_lam_sang",
+   "co_anh",
+   "ket_luan_cuoi",
+   "nguong_lam_sang",
+   "nhan",
+   "p_lam_sang"
+  ],
+  "dong_y_ket_luan_ghep_323": 1.0
+ },
+ "sha256": {
+  "cau_hinh_chot.json": "68b803152d3952b2b1537951a153684c4ba9b7c17de4792dabb86cab73bf2ff3",
+  "du_doan.py": "81596af31b83cfffae0b843f4c8cd9765cc5b8e6334858a60a6119c2edd5d1ee",
+  "mo_hinh/biovil_t_448_seed0.pt": "ff12a02504e4b39dc2d22d54a4a179b4d7cd7cc8869282bb87f48ceb79146d15",
+  "mo_hinh/biovil_t_448_seed1.pt": "4525e9b39c3e2830c64b8690475f48078abaf1ae118872dd69a82072d9e6dec3",
+  "mo_hinh/biovil_t_448_seed2.pt": "f418e73b815f330d01e3402f0a991a066c1819396d9f04e590507b9906511223",
+  "mo_hinh/lam_sang_app_xgb.json": "7dfe552d2c09f7d8e8876a3eb1125e3d86e9af5927d682aab0afefcde0149b8c",
+  "nghe.py": "84964119ec06e193dc0bb3840ca095b4db21a84d479603638044791f96245313",
+  "MO_TA_API.md": "f96134032235b5e9cc4d7522537922752a99ee2874908e7f9670af61960f6cf4",
+  "requirements.txt": "7a1ec8e01e9bb0e14c71da94cfbca6b843e56aa6425d7bff764c050f9fa863aa"
+ }
+}

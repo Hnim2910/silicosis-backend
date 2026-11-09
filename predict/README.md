@@ -1,12 +1,30 @@
-# Service dự đoán (thử nghiệm)
+# Service dự đoán (thử nghiệm) — model New Way, nhãn `ketqua`
 
-Service FastAPI nội bộ. Backend Spring gọi nó để ước lượng xác suất bệnh bụi phổi silic từ một ảnh X-quang ngực.
+Service FastAPI nội bộ. Backend Spring gọi nó để sàng lọc bụi phổi silic từ **thông tin lâm sàng**, có thể kèm **phim X-quang ngực thẳng**.
 
-> **Kết quả thử nghiệm, không thay thế chẩn đoán của bác sĩ.**
+> **Công cụ hỗ trợ sàng lọc, không phải chẩn đoán.** Kết quả chỉ trả lời câu hỏi "có nên khám / đọc phim chuyên khoa tiếp hay không".
 
-- **Model:** BioViL-T (ResNet50 multi-image, projector 128) fine-tune trên Silicodata Set A, nhãn `bnn`. Lớp 1 = `"Co"`.
-- **Checkpoint:** `best_model_biovilt_finetuned.pth`, khoảng 110 MB. File nằm ngoài repo; trỏ tới nó bằng `MODEL_PATH`.
-- **Code huấn luyện:** `ĐÒ ÁN\Data DGCNN\Finetune 4\finetune_biovilt_setA.py`.
+- **Nhãn `ketqua`:** phim được bác sĩ đọc là nghi bụi phổi silic.
+- **Phần lâm sàng:** XGBoost. Ngưỡng `0.051546`, chọn để độ nhạy ≥ 0,80.
+- **Phần ảnh:** BioViL-T 448 px, gồm 3 mô hình (3 seed), lấy trung bình.
+- **Ghép:** `p_ghep = sigmoid(0.901645·logit(p_anh) + 0.249384·logit(p_lam_sang) + 0.016646)`, ngưỡng `0.207134`.
+- **Mô tả đầy đủ đầu vào và đầu ra:** [ml/new_way/MO_TA_API.md](ml/new_way/MO_TA_API.md).
+
+## Đặt mô hình ở đâu
+
+Gói `ml/new_way/` là bản chép nguyên `ĐÒ ÁN\Data DGCNN\New Way\xuat_app`. **Không sửa** `du_doan.py`, `nghe.py` hay `cau_hinh_chot.json` trong gói này. `MoHinh()` kiểm tra sha256 các file mô hình theo `cau_hinh_chot.json` và báo lỗi nếu có file bị thay.
+
+```
+predict/ml/new_way/
+├── du_doan.py, nghe.py, cau_hinh_chot.json, run_config.json, MO_TA_API.md   (có trong git)
+└── mo_hinh/                                                                (KHÔNG có trong git — .gitignore)
+    ├── biovil_t_448_seed0.pt   ~110 MB
+    ├── biovil_t_448_seed1.pt   ~110 MB
+    ├── biovil_t_448_seed2.pt   ~110 MB
+    └── lam_sang_app_xgb.json
+```
+
+Máy mới: chép thư mục `mo_hinh/` từ `New Way\xuat_app\mo_hinh\` vào `predict/ml/new_way/mo_hinh/`. Cách khác là để gói ở chỗ khác rồi trỏ `NEW_WAY_DIR` tới thư mục đó.
 
 ## Cài đặt & chạy
 
@@ -16,81 +34,121 @@ cd predict
 python -m venv --system-site-packages .venv
 # Máy mới chưa có torch thì bỏ --system-site-packages; requirements.txt sẽ cài torch cu124.
 .\.venv\Scripts\python -m pip install -r requirements.txt
-copy .env.example .env      # rồi sửa MODEL_PATH
+copy .env.example .env
 .\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8001
 ```
 
-Sau khi chạy, mở `http://127.0.0.1:8001/docs` để thử API. Service chỉ bind `127.0.0.1`, không bật CORS và không xác thực, vì chỉ backend Spring gọi tới nó.
+- Sau khi chạy, mở `http://127.0.0.1:8001/docs` để thử API.
+- Service chỉ bind `127.0.0.1`, không bật CORS và không xác thực, vì chỉ backend Spring gọi tới nó.
+- `MoHinh()` được nạp **một lần** lúc khởi động. Nếu nạp lỗi, service vẫn chạy nhưng các endpoint dự đoán trả 503.
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| `MODEL_PATH` | (trống) | Đường dẫn checkpoint. Trống hoặc sai → `/predict` trả 503 |
-| `THRESHOLD` | `0.403` | Ngưỡng xác suất để báo `"Co"` |
-| `DEVICE` | `auto` | `auto` (cuda nếu có) / `cpu` / `cuda` |
+| `NEW_WAY_DIR` | `ml/new_way` | Thư mục gói New Way: tương đối tính từ `predict/`, hoặc tuyệt đối |
+| `PRELOAD_IMAGE_MODEL` | `true` | `true`: nạp 3 mạng ảnh ngay lúc khởi động (~1,5 GB RAM). `false`: nạp ở lần gửi ảnh đầu tiên |
+| `DEVICE` | `auto` | `auto` (cuda nếu có) / `cpu` / `cuda`. GPU chạy fp16; CPU chạy fp32, điểm có thể lệch khoảng 1e-3 |
 | `MAX_UPLOAD_MB` | `10` | Dung lượng ảnh tối đa |
+| `MAX_CLINICAL_KB` | `64` | Dung lượng JSON lâm sàng tối đa |
+
+Biến cũ `MODEL_PATH` và `THRESHOLD` (model BioViL-T Set A, nhãn `bnn`) không còn được dùng.
 
 ## API
+
+Mỗi response dự đoán thành công có thêm 2 header:
+- `X-Model-Version`: 12 ký tự hex, hiện là `68b803152d39`;
+- `X-Model-Name`: `New Way ketqua`.
+
+Body của response là **nguyên dict** mà `MoHinh.du_doan()` trả về.
 
 ### `GET /health`
 
 ```json
-{"status": "ok", "model_loaded": true, "device": "cuda", "model_version": "c63f9782b7d1"}
+{"status":"ok","model_loaded":true,"image_model_loaded":true,"device":"cuda",
+ "model_version":"68b803152d39","model_name":"New Way ketqua: ..."}
 ```
 
-`model_version` là 12 ký tự đầu của sha256 file checkpoint. Với checkpoint hiện tại, giá trị là `c63f9782b7d1`.
+### `GET /schema`
 
-### `POST /predict`
+Trả danh sách cột và loại của từng cột (`muc` = danh mục, `so` = số, `chu` = chữ tự do), kèm các mức hợp lệ. Spring dùng endpoint này để kiểm tra `extra.lam_sang` trước khi lưu.
 
-Gửi multipart với field `file`, chứa ảnh JPEG hoặc PNG.
+### `POST /predict/clinical` (chỉ lâm sàng)
+
+Body là JSON `{tên_cột: giá_trị}`. Quy tắc cho giá trị:
+- Cột thiếu, `null` hoặc `""` được coi là bỏ trống.
+- Số có thể gửi dạng chuỗi có dấu phẩy thập phân, ví dụ `"3,5"`.
+- Cột danh mục phải đúng mã **không dấu** trong bảng của MO_TA_API.md, ví dụ `"Co"`, `"Khong"`, `"Co hut thuoc"`. Với `mdkhotho`, gửi bản **không** có ngoặc kép.
 
 ```json
-{
-  "probability": 0.18,
-  "label": "Khong",
-  "threshold": 0.403,
-  "model_version": "c63f9782b7d1",
-  "model_name": "BioViL-T fine-tune Set A (bnn)",
-  "experimental": true,
-  "disclaimer": "Kết quả thử nghiệm, không thay thế chẩn đoán của bác sĩ."
-}
+{"gioitinh":"Nam","namsinh":1975,"cviec":"cong nhan nghien da","ho":"Co","fvc":"3,2"}
 ```
 
-- `probability`: xác suất lớp "Co", tính bằng `softmax(logits)[1]`.
-- `label`: `"Co"` nếu `probability >= threshold`, ngược lại `"Khong"`. Nhãn viết ASCII không dấu.
+Response:
 
-Lỗi trả về dạng `{code, message}`:
+```json
+{"nhan":"ketqua","p_lam_sang":0.21,"nguong_lam_sang":0.051546,"bao_nguy_co_lam_sang":true,
+ "co_anh":false,"p_anh":null,"p_ghep":null,"nguong_ghep":null,"bao_nguy_co_ghep":null,"ket_luan_cuoi":true}
+```
+
+### `POST /predict/clinical-image` (lâm sàng + phim)
+
+Request là multipart, gồm:
+- phần `lam_sang`: chuỗi JSON như trên, có thể là `{}`;
+- phần `file`: ảnh PNG hoặc JPEG.
+
+Service đọc ảnh từ bytes trong bộ nhớ và **không** ghi xuống đĩa.
+
+```json
+{"nhan":"ketqua","p_lam_sang":0.21,"nguong_lam_sang":0.051546,"bao_nguy_co_lam_sang":true,
+ "co_anh":true,"p_anh":0.64,"p_ghep":0.55,"nguong_ghep":0.207134,"bao_nguy_co_ghep":true,"ket_luan_cuoi":true}
+```
+
+Khi có ảnh, `ket_luan_cuoi` lấy theo `p_ghep`; khi không có ảnh, lấy theo `p_lam_sang`.
+
+**Câu hiển thị cho người dùng:**
+- `true` → "Có nguy cơ, nên khám / đọc phim chuyên khoa".
+- `false` → "Nguy cơ thấp theo mô hình".
+- Không dùng chữ "dương tính" hay "âm tính".
+
+### Lỗi
+
+Lỗi trả về dạng `{code, message[, errors]}`:
 
 | HTTP | code | Khi nào |
 |---|---|---|
+| 422 | `INVALID_INPUT` | JSON lâm sàng hỏng; cột không có trong mô hình; mã danh mục sai (`errors[]` có `field` và `allowed`); số không đọc được; chữ dài quá 500 ký tự |
 | 400 | `FILE_TOO_LARGE` | Ảnh vượt `MAX_UPLOAD_MB` |
 | 400 | `UNSUPPORTED_FORMAT` | Mở được nhưng không phải JPEG/PNG (xét theo nội dung, không theo tên tệp) |
-| 400 | `INVALID_IMAGE` | Không phải ảnh, ảnh hỏng, quá 50 triệu pixel, hoặc thiếu field `file` |
-| 503 | `MODEL_NOT_LOADED` | Không nạp được checkpoint |
+| 400 | `INVALID_IMAGE` | Không phải ảnh, ảnh hỏng, quá 50 triệu pixel, hoặc thiếu phần `file` |
+| 503 | `MODEL_NOT_LOADED` | Không nạp được gói mô hình (thiếu file, sai sha256…) |
+| 410 | `ENDPOINT_REMOVED` | Gọi `POST /predict` của model cũ |
 
-DICOM nằm ngoài phạm vi.
+Gói gốc âm thầm coi mã danh mục sai là mức hiếm. Service này thì trả **422**, để lỗi gõ sai không làm điểm bị lệch mà không ai biết.
 
-## Tiền xử lý (giống hệt lúc huấn luyện)
+## Model cũ đã ngắt
 
-1. Chuyển ảnh về xám 8-bit (`L`). Ảnh 16-bit được co giãn min–max về 0–255.
-2. `resize((256, 256), LANCZOS)`, giống `Finetune\resize_setA.py`.
-3. `Resize(512)` → `CenterCrop(448)` → `ToTensor()` (giá trị 0–1, **không** normalize ImageNet) → `ExpandChannels()` (1 kênh → 3 kênh).
+- Route `POST /predict` (BioViL-T Set A, nhãn `bnn`) hiện trả 410.
+- File `app/model.py` vẫn giữ trong repo nhưng không được import nữa.
+- Trong DB, các dòng `predictions` của model cũ vẫn còn, với `engine = 'LEGACY'`, nhưng không hiện ra trong app.
 
 ## Giới hạn cần biết
 
-- **Ngưỡng 0.403 lạc quan.** Ngưỡng được chọn theo Youden trên chính tập test của lần fine-tune: 339 ảnh, 60% là "Co". Trên tập đó:
-  - AUC = 0.902 (khả năng phân biệt hai lớp; 1 là hoàn hảo);
-  - độ nhạy (tỉ lệ bắt đúng ca bệnh) = 0.906;
-  - độ đặc hiệu (tỉ lệ nhận đúng ca không bệnh) = 0.781.
+Số liệu đo trên tập test khóa, chấm một lần:
 
-  Ngoài thực tế tỉ lệ dương tính thấp hơn nhiều. Vì vậy khi model báo "Co", tỉ lệ đúng sẽ thấp hơn những con số trên.
-- **Ảnh không vuông bị méo.** Ảnh huấn luyện gốc là 1024×1024 nên lúc huấn luyện không bị méo. Ảnh không vuông vẫn bị ép về 256×256 như bước 2, và điều này có thể làm kết quả kém hơn.
-- **Chỉ dùng ảnh.** Model chưa dùng chỉ số lâm sàng.
-- **Thời gian dự đoán một ảnh** (RTX 3060 Laptop, không tính warm-up): khoảng 17 ms trên cuda, khoảng 3.9 s trên cpu.
+| Luồng | ROC-AUC (khả năng xếp ca có bệnh cao hơn ca không bệnh) | Độ nhạy (tỉ lệ ca có bệnh được báo) | Độ đặc hiệu (tỉ lệ ca không bệnh không bị báo) | Tỉ lệ bị báo |
+|---|---|---|---|---|
+| Chỉ lâm sàng (n=1.012) | 0,637 | 0,861 | 0,338 | 67,6 % |
+| Ảnh + lâm sàng (n=323) | 0,816 | 0,815 | 0,623 | 50,2 % |
+
+- Phần lâm sàng là **bộ lọc rộng**: nó báo nguy cơ cho khoảng 2/3 số người.
+- Khi có phim, tín hiệu chủ yếu đến từ ảnh. Trên tập test, ghép không tốt hơn chỉ dùng ảnh.
+- Mô hình học từ dữ liệu 5 tỉnh, 2 đợt. Ở nơi khác, ngưỡng cần được kiểm tra lại.
+- Mô hình chỉ học trên phim ngực thẳng. Ảnh sai loại (phim nghiêng, ảnh chụp màn hình, ảnh không phải phim) cho điểm vô nghĩa. Vì vậy app bắt người dùng xác nhận "Đây là phim X-quang ngực thẳng" trước khi gửi ảnh.
 
 ## Riêng tư
 
-- Service không lưu ảnh xuống đĩa.
-- Log chỉ ghi mã kết quả và thời gian xử lý, không ghi tên tệp hay nội dung ảnh, vì ảnh có thể chứa tên/ngày in trên phim.
+- Service không lưu ảnh hay dữ liệu lâm sàng xuống đĩa.
+- Log chỉ ghi tên endpoint, mã kết quả và thời gian xử lý. Log không ghi tên tệp, nội dung ảnh hay giá trị lâm sàng, vì ảnh có thể chứa tên hoặc ngày in trên phim.
+- Thông báo lỗi 422 không lặp lại giá trị người dùng đã nhập.
 
 ## Test
 
@@ -98,5 +156,5 @@ DICOM nằm ngoài phạm vi.
 .\.venv\Scripts\python -m pytest -q
 ```
 
-- Mọi test dùng ảnh giả tạo bằng PIL, không dùng ảnh bệnh nhân thật.
-- Các test cần checkpoint sẽ tự `skip` nếu không tìm thấy `MODEL_PATH`.
+- Mọi test dùng dữ liệu giả và ảnh giả tạo bằng PIL, không dùng dữ liệu bệnh nhân thật.
+- Các test cần file mô hình sẽ tự `skip` nếu không có `ml/new_way/mo_hinh/`.

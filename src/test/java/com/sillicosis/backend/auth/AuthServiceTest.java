@@ -29,7 +29,6 @@ import com.sillicosis.backend.auth.dto.LoginRequest;
 import com.sillicosis.backend.auth.dto.RegisterRequest;
 import com.sillicosis.backend.common.ApiException;
 import com.sillicosis.backend.common.TokenHasher;
-import com.sillicosis.backend.patient.PatientService;
 import com.sillicosis.backend.user.Role;
 import com.sillicosis.backend.user.User;
 import com.sillicosis.backend.user.UserAccounts;
@@ -53,8 +52,6 @@ class AuthServiceTest {
 
 	private TokenService tokenService;
 
-	private PatientService patientService;
-
 	private AuthService authService;
 
 	private User user;
@@ -65,9 +62,7 @@ class AuthServiceTest {
 		userAccounts = mock(UserAccounts.class);
 		refreshTokenRepository = mock(RefreshTokenRepository.class);
 		tokenService = mock(TokenService.class);
-		patientService = mock(PatientService.class);
-		authService = new AuthService(userRepository, userAccounts, refreshTokenRepository, tokenService,
-				patientService, encoder,
+		authService = new AuthService(userRepository, userAccounts, refreshTokenRepository, tokenService, encoder,
 				TestProps.defaults(), Clock.fixed(NOW, ZoneOffset.UTC));
 
 		user = new User();
@@ -96,7 +91,7 @@ class AuthServiceTest {
 		assertThat(u.getPasswordHash()).isNotEqualTo(PASSWORD);
 		assertThat(encoder.matches(PASSWORD, u.getPasswordHash())).isTrue();
 		verify(userAccounts).ensureUnique("nguoimoi@example.com", "0912345678", null);
-		verify(patientService).createForUser(u, u.getId());
+		verify(userAccounts).assignPatientCode(u);
 		verify(tokenService).issueTokens(u);
 	}
 
@@ -111,7 +106,7 @@ class AuthServiceTest {
 				assertThat(e.getCode()).isEqualTo("EMAIL_TAKEN");
 			});
 		verify(userRepository, never()).saveAndFlush(any());
-		verify(patientService, never()).createForUser(any(), any());
+		verify(userAccounts, never()).assignPatientCode(any());
 	}
 
 	// ---------- login ----------

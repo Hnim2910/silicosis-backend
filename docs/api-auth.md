@@ -2,7 +2,7 @@
 
 Base URL dev: `http://localhost:8080` (đổi bằng `SERVER_PORT` trong `.env`) · Swagger UI: `/swagger-ui.html` · OpenAPI JSON: `/v3/api-docs`
 
-Tài liệu liên quan: [api-patients.md](api-patients.md) — hồ sơ bệnh nhân (`/api/patients`); [api-visits.md](api-visits.md) — lượt khám (`/api/visits`); [api-images.md](api-images.md) — ảnh X-quang (`/api/images`).
+Tài liệu liên quan: [api-predictions.md](api-predictions.md) — lượt chẩn đoán (`/api/predictions`). Tài khoản `USER` chính là hồ sơ bệnh nhân (không còn `/api/patients`).
 
 Mọi request/response dùng JSON UTF-8. Endpoint cần đăng nhập gửi header:
 
@@ -25,9 +25,9 @@ Khi khởi động, nếu có `ADMIN_EMAIL` + `ADMIN_PASSWORD` mà email chưa t
 ## 2. Vai trò
 
 `USER` (bệnh nhân) · `ADMIN` — **viết hoa**, đúng như trong JSON và trong claim `role` của JWT.
-(Frontend hiện đang dùng `patient`/`doctor`/`technician`/`admin` chữ thường → khi tích hợp cần đổi về `USER`/`ADMIN`.)
+(Web đổi sang `patient`/`admin` chữ thường, chỉ trong `src/services/userMapper.ts`.)
 
-- Tự đăng ký luôn tạo `USER`.
+- Tự đăng ký luôn tạo `USER`, kèm mã bệnh nhân `BN-000001` (`code`).
 - ADMIN tạo tài khoản qua `POST /api/users` cũng luôn là `USER`. Không có API đổi vai trò; tài khoản ADMIN duy nhất được seed từ `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
 
 ## 3. Token
@@ -40,7 +40,7 @@ Khi khởi động, nếu có `ADMIN_EMAIL` + `ADMIN_PASSWORD` mà email chưa t
 
 - `/refresh` **xoay vòng**: mỗi lần gọi trả cặp token mới, refresh token cũ bị thu hồi.
 - Dùng lại một refresh token đã bị thu hồi → coi như bị lộ, **thu hồi mọi phiên** của user đó.
-- Đổi mật khẩu, đặt lại mật khẩu, đổi vai trò, khoá hoặc xoá tài khoản → thu hồi mọi refresh token.
+- Đổi mật khẩu, đặt lại mật khẩu, khoá hoặc xoá tài khoản → thu hồi mọi refresh token.
   Access token đang dùng vẫn hợp lệ tới khi hết hạn (tối đa 15 phút).
 
 `AuthResponse`:
@@ -56,11 +56,12 @@ Khi khởi động, nếu có `ADMIN_EMAIL` + `ADMIN_PASSWORD` mà email chưa t
 }
 ```
 
-`UserResponse`:
+`UserResponse` (tài khoản kiêm hồ sơ bệnh nhân):
 
 ```json
 {
   "id": "5bb190d9-06cc-4427-a8de-339b40c8964d",
+  "code": "BN-000012",
   "email": "nguoidung@example.com",
   "phone": "0912345678",
   "fullName": "Nguyễn Văn A",
@@ -69,12 +70,17 @@ Khi khởi động, nếu có `ADMIN_EMAIL` + `ADMIN_PASSWORD` mà email chưa t
   "birthDate": "1980-05-20",
   "gender": "MALE",
   "occupation": "Thợ mỏ",
+  "workplace": "Mỏ đá Bình Minh",
+  "exposureHistory": "Nghiền đá 12 năm",
+  "riskFactors": null,
   "createdAt": "2026-10-07T16:57:43.916Z",
   "updatedAt": "2026-10-07T16:57:43.916Z"
 }
 ```
 
-`gender`: `MALE` | `FEMALE` | `OTHER` | `null`.
+- `gender`: `MALE` | `FEMALE` | `OTHER` | `null`.
+- `code`: mã bệnh nhân, không đổi, không dùng lại; `null` với `ADMIN`.
+- Giới tính và năm sinh trong hồ sơ được chép vào `lamSang` mỗi khi chẩn đoán (xem [api-predictions.md](api-predictions.md)).
 
 ## 4. Quy tắc dữ liệu
 
@@ -84,7 +90,10 @@ Khi khởi động, nếu có `ADMIN_EMAIL` + `ADMIN_PASSWORD` mà email chưa t
 | `phone` | Không bắt buộc; số di động VN: `0[35789]xxxxxxxx`, chấp nhận `+84`/`84`, dấu cách, `.`, `-`; lưu dạng `0xxxxxxxxx`; duy nhất |
 | `password` | 8–72 ký tự, có ít nhất 1 chữ cái và 1 chữ số |
 | `fullName` | 2–150 ký tự |
-| `birthDate` | `yyyy-MM-dd`, phải ở quá khứ |
+| `birthDate` | `yyyy-MM-dd`, phải ở quá khứ, từ 1900 |
+| `occupation` | ≤ 150 ký tự |
+| `workplace` | ≤ 255 ký tự |
+| `exposureHistory`, `riskFactors` | ≤ 2000 ký tự (`APP_PROFILE_MAX_TEXT_LENGTH`) |
 
 Email và SĐT của tài khoản đã xoá mềm được giải phóng để đăng ký lại.
 
@@ -176,14 +185,15 @@ Mỗi OTP chỉ đổi được một lần lấy `resetToken`.
 | Method | Path | Mô tả | Thành công |
 |---|---|---|---|
 | GET | `/api/users/me` | Thông tin tài khoản | 200 `UserResponse` |
-| PUT | `/api/users/me` | Cập nhật hồ sơ | 200 `UserResponse` |
+| PUT | `/api/users/me` | Cập nhật tài khoản và hồ sơ bệnh nhân | 200 `UserResponse` |
 | PUT | `/api/users/me/password` | Đổi mật khẩu | 204 |
 
-`PUT /api/users/me` **ghi đè toàn bộ** hồ sơ, nên trường bỏ trống sẽ thành `null`. `fullName` và `email` là bắt buộc.
+`PUT /api/users/me` **ghi đè toàn bộ** hồ sơ, nên trường bỏ trống sẽ thành `null`. `fullName` và `email` là bắt buộc; `code` không sửa được.
 
 ```json
 { "fullName": "Nguyễn Văn A", "email": "a@example.com", "phone": "0912345678",
-  "birthDate": "1980-05-20", "gender": "MALE", "occupation": "Thợ mỏ" }
+  "birthDate": "1980-05-20", "gender": "MALE", "occupation": "Thợ mỏ",
+  "workplace": "Mỏ đá Bình Minh", "exposureHistory": "Nghiền đá 12 năm", "riskFactors": null }
 ```
 
 `PUT /api/users/me/password`:
@@ -201,7 +211,7 @@ Mỗi OTP chỉ đổi được một lần lấy `resetToken`.
 |---|---|---|---|
 | GET | `/api/users?role=&q=&page=0&size=20&sort=createdAt&direction=DESC` | — | 200 `PageResponse<UserResponse>` |
 | GET | `/api/users/{id}` | — | 200 `UserResponse` |
-| POST | `/api/users` | `{fullName, email, phone?, password}` | 201 + header `Location` |
+| POST | `/api/users` | `{fullName, email, phone?, password}` | 201 + header `Location`; tạo `USER` kèm mã bệnh nhân |
 | PATCH | `/api/users/{id}/status` | `{"enabled": false}` | 200 `UserResponse` |
 | DELETE | `/api/users/{id}` | — | 204 (xoá mềm) |
 
@@ -216,10 +226,10 @@ Tham số danh sách:
 ```
 
 Ràng buộc:
-- ADMIN không tự đổi vai trò, tự khoá hoặc tự xoá chính mình → 400 `CANNOT_MODIFY_SELF`.
+- ADMIN không tự khoá hoặc tự xoá chính mình → 400 `CANNOT_MODIFY_SELF`.
 - `enabled=true` đồng thời xoá khoá tạm do đăng nhập sai.
-- `enabled=false`, đổi vai trò và xoá đều thu hồi refresh token. Vai trò mới có hiệu lực ở access token kế tiếp.
-- Xoá mềm: giữ bản ghi (để liên kết với dữ liệu y tế sau này) và ẩn khỏi mọi API; `GET` sẽ trả 404.
+- `enabled=false` và xoá đều thu hồi refresh token.
+- Xoá mềm: giữ bản ghi cùng hồ sơ và lượt chẩn đoán (dữ liệu y tế), ẩn khỏi mọi API; `GET` sẽ trả 404.
 
 Gọi bằng vai trò khác ADMIN → 403 `FORBIDDEN`.
 
@@ -247,6 +257,7 @@ Mọi lỗi, kể cả 401/403 từ Spring Security, đều có dạng:
 | 403 | `FORBIDDEN` (không đủ quyền), `ACCOUNT_DISABLED` |
 | 404 | `NOT_FOUND` |
 | 405 | `METHOD_NOT_ALLOWED` |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` (sai kiểu nội dung, VD gửi JSON thường vào endpoint multipart) |
 | 409 | `EMAIL_TAKEN`, `PHONE_TAKEN`, `CONFLICT` |
 | 423 | `ACCOUNT_LOCKED` |
 | 500 | `INTERNAL_ERROR` |

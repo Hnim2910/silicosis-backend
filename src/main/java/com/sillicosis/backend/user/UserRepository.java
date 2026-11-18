@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 /** Các truy vấn theo email/SĐT chỉ xét tài khoản chưa bị xoá mềm. */
 public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
@@ -22,5 +23,8 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 	boolean existsByEmailAndDeletedAtIsNullAndIdNot(String email, UUID id);
 
 	boolean existsByPhoneAndDeletedAtIsNullAndIdNot(String phone, UUID id);
+
+	@Query(value = "SELECT nextval('user_code_seq')", nativeQuery = true)
+	long nextCodeNumber();
 
 }

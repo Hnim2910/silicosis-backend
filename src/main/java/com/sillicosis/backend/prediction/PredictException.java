@@ -8,6 +8,9 @@ class PredictException extends RuntimeException {
 
 	static final String UNAVAILABLE = "PREDICT_UNAVAILABLE";
 
+	/** app.predict.enabled = false: lượt chẩn đoán vẫn được lưu, thử lại khi bật lại. */
+	static final String DISABLED = "PREDICT_DISABLED";
+
 	static final String TIMEOUT = "PREDICT_TIMEOUT";
 
 	static final String BAD_RESPONSE = "PREDICT_BAD_RESPONSE";

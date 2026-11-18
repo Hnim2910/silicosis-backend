@@ -1,9 +1,12 @@
 package com.sillicosis.backend.user;
 
 import java.time.Clock;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.data.domain.Pageable;
@@ -16,7 +19,8 @@ import com.sillicosis.backend.auth.TokenService;
 import com.sillicosis.backend.common.ApiException;
 import com.sillicosis.backend.common.PageResponse;
 import com.sillicosis.backend.common.PhoneNumbers;
-import com.sillicosis.backend.patient.PatientService;
+import com.sillicosis.backend.common.InvalidFieldsException;
+import com.sillicosis.backend.config.AppProperties;
 import com.sillicosis.backend.user.dto.ChangePasswordRequest;
 import com.sillicosis.backend.user.dto.CreateUserRequest;
 import com.sillicosis.backend.user.dto.UpdateProfileRequest;
@@ -29,11 +33,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserService {
 
+	private static final LocalDate MIN_BIRTH_DATE = LocalDate.of(1900, 1, 1);
+
 	private final UserRepository userRepository;
 	private final UserAccounts userAccounts;
 	private final TokenService tokenService;
-	private final PatientService patientService;
 	private final PasswordEncoder passwordEncoder;
+	private final AppProperties props;
 	private final Clock clock;
 
 	// ---------- Người dùng hiện tại ----------
@@ -43,10 +49,11 @@ public class UserService {
 		return UserResponse.from(currentUser(userId));
 	}
 
-	/** Họ tên, ngày sinh, giới tính, nghề nghiệp được chép sang hồ sơ bệnh nhân gắn với tài khoản. */
+	/** Ghi đè thông tin tài khoản và hồ sơ bệnh nhân; mã bệnh nhân không đổi. */
 	@Transactional
 	public UserResponse updateMe(UUID userId, UpdateProfileRequest req) {
 		User user = currentUser(userId);
+		validateProfile(req);
 		String email = UserAccounts.normalizeEmail(req.email());
 		String phone = PhoneNumbers.normalize(req.phone());
 		userAccounts.ensureUnique(email, phone, userId);
@@ -56,7 +63,9 @@ public class UserService {
 		user.setBirthDate(req.birthDate());
 		user.setGender(req.gender());
 		user.setOccupation(blankToNull(req.occupation()));
-		patientService.syncFromUser(user);
+		user.setWorkplace(blankToNull(req.workplace()));
+		user.setExposureHistory(blankToNull(req.exposureHistory()));
+		user.setRiskFactors(blankToNull(req.riskFactors()));
 		userRepository.flush();
 		return UserResponse.from(user);
 	}
@@ -87,7 +96,7 @@ public class UserService {
 		return UserResponse.from(userAccounts.getActive(id));
 	}
 
-	/** Tài khoản USER mới kèm hồ sơ bệnh nhân trong cùng transaction. */
+	/** Tài khoản USER (bệnh nhân) mới, kèm mã bệnh nhân. */
 	@Transactional
 	public UserResponse create(UUID actorId, CreateUserRequest req) {
 		String email = UserAccounts.normalizeEmail(req.email());
@@ -99,8 +108,8 @@ public class UserService {
 		user.setFullName(req.fullName().trim());
 		user.setPasswordHash(passwordEncoder.encode(req.password()));
 		user.setRole(Role.USER);
+		userAccounts.assignPatientCode(user);
 		userRepository.saveAndFlush(user);
-		patientService.createForUser(user, actorId);
 		return UserResponse.from(user);
 	}
 
@@ -121,8 +130,7 @@ public class UserService {
 	}
 
 	/**
-	 * Xoá mềm: giữ bản ghi (liên kết dữ liệu y tế), giải phóng email/SĐT, thu hồi phiên. Hồ sơ bệnh nhân gắn kèm
-	 * được giữ nguyên (có chủ ý); ADMIN xoá riêng nếu cần.
+	 * Xoá mềm: giữ bản ghi cùng hồ sơ và lượt chẩn đoán (dữ liệu y tế), giải phóng email/SĐT, thu hồi phiên.
 	 */
 	@Transactional
 	public void delete(UUID actorId, UUID id) {
@@ -141,6 +149,28 @@ public class UserService {
 			throw ApiException.forbidden("ACCOUNT_DISABLED", "Tài khoản đã bị khoá. Vui lòng liên hệ quản trị viên.");
 		}
 		return user;
+	}
+
+	/** Quy tắc phụ thuộc cấu hình hoặc ngày hiện tại; phần còn lại nằm ở annotation của request. */
+	private void validateProfile(UpdateProfileRequest req) {
+		Map<String, String> errors = new LinkedHashMap<>();
+		if (req.birthDate() != null && req.birthDate().isBefore(MIN_BIRTH_DATE)) {
+			errors.put("birthDate", "Ngày sinh không hợp lệ.");
+		}
+		int max = props.profile().maxTextLength();
+		if (length(req.exposureHistory()) > max) {
+			errors.put("exposureHistory", "Tiền sử phơi nhiễm tối đa " + max + " ký tự.");
+		}
+		if (length(req.riskFactors()) > max) {
+			errors.put("riskFactors", "Yếu tố nguy cơ tối đa " + max + " ký tự.");
+		}
+		if (!errors.isEmpty()) {
+			throw new InvalidFieldsException(errors);
+		}
+	}
+
+	private static int length(String s) {
+		return s == null ? 0 : s.codePointCount(0, s.length());
 	}
 
 	private static void forbidSelf(UUID actorId, UUID targetId) {

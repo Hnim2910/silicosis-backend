@@ -39,6 +39,11 @@ public class UserAccounts {
 			.orElseThrow(() -> ApiException.notFound("Không tìm thấy người dùng."));
 	}
 
+	/** Gán mã bệnh nhân BN-000001 cho tài khoản USER mới (gọi trước khi lưu). */
+	public void assignPatientCode(User user) {
+		user.setCode("BN-%06d".formatted(userRepository.nextCodeNumber()));
+	}
+
 	/** @param excludeId id của chính user đang sửa, null khi tạo mới */
 	public void ensureUnique(String email, String phone, UUID excludeId) {
 		boolean emailTaken = excludeId == null ? userRepository.existsByEmailAndDeletedAtIsNull(email)

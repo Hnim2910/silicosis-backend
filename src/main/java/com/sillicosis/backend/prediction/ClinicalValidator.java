@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Kiểm tra {@code extra.lam_sang} trước khi lưu, cùng quy tắc với FastAPI ({@code predict/app/new_way.py}): cột phải
- * có trong cấu hình model, số chấp nhận dấu phẩy thập phân, chữ tự do tối đa 500 ký tự, cột phân loại phải đúng mã
+ * Kiểm tra {@code lamSang} của lượt chẩn đoán trước khi lưu, cùng quy tắc với FastAPI
+ * ({@code predict/app/new_way.py}): cột phải có trong cấu hình model, số chấp nhận dấu phẩy thập phân, chữ tự do tối đa 500 ký tự, cột phân loại phải đúng mã
  * không dấu. Rỗng/null = bỏ trống. Danh sách cột lấy từ {@code GET /schema} một lần rồi giữ lại; nếu service chưa
  * chạy thì bỏ qua bước này (lúc dự đoán FastAPI vẫn kiểm tra, sai thì dòng FAILED PREDICT_INVALID_INPUT).
  */
@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ClinicalValidator {
 
-	public static final String KEY = "lam_sang";
+	public static final String KEY = "lamSang";
 
 	static final int MAX_TEXT = 500;
 
@@ -28,14 +28,14 @@ public class ClinicalValidator {
 
 	private final AtomicReference<PredictClient.Schema> cache = new AtomicReference<>();
 
-	/** Lỗi theo khoá {@code extra.lam_sang.<cột>}; thông báo không chứa giá trị đã nhập. */
+	/** Lỗi theo khoá {@code lamSang.<cột>}; thông báo không chứa giá trị đã nhập. */
 	public Map<String, String> validate(Object lamSang) {
 		Map<String, String> errors = new LinkedHashMap<>();
 		if (lamSang == null) {
 			return errors;
 		}
 		if (!(lamSang instanceof Map<?, ?> map)) {
-			errors.put("extra." + KEY, "Thông tin lâm sàng phải là một đối tượng JSON {tên_cột: giá_trị}.");
+			errors.put(KEY, "Thông tin lâm sàng phải là một đối tượng JSON {tên_cột: giá_trị}.");
 			return errors;
 		}
 		Optional<PredictClient.Schema> schema = schema();
@@ -48,7 +48,7 @@ public class ClinicalValidator {
 			String col = String.valueOf(e.getKey());
 			String err = check(kind.get(col), levels.get(col), e.getValue());
 			if (err != null) {
-				errors.put("extra." + KEY + "." + col, err);
+				errors.put(KEY + "." + col, err);
 			}
 		}
 		return errors;

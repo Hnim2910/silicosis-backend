@@ -16,7 +16,6 @@ import com.sillicosis.backend.common.ApiException;
 import com.sillicosis.backend.common.PhoneNumbers;
 import com.sillicosis.backend.common.TokenHasher;
 import com.sillicosis.backend.config.AppProperties;
-import com.sillicosis.backend.patient.PatientService;
 import com.sillicosis.backend.user.Role;
 import com.sillicosis.backend.user.User;
 import com.sillicosis.backend.user.UserAccounts;
@@ -29,7 +28,6 @@ public class AuthService {
 	private final UserAccounts userAccounts;
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final TokenService tokenService;
-	private final PatientService patientService;
 	private final PasswordEncoder passwordEncoder;
 	private final AppProperties props;
 	private final Clock clock;
@@ -38,13 +36,12 @@ public class AuthService {
 	private final String dummyHash;
 
 	public AuthService(UserRepository userRepository, UserAccounts userAccounts,
-			RefreshTokenRepository refreshTokenRepository, TokenService tokenService, PatientService patientService,
-			PasswordEncoder passwordEncoder, AppProperties props, Clock clock) {
+			RefreshTokenRepository refreshTokenRepository, TokenService tokenService, PasswordEncoder passwordEncoder,
+			AppProperties props, Clock clock) {
 		this.userRepository = userRepository;
 		this.userAccounts = userAccounts;
 		this.refreshTokenRepository = refreshTokenRepository;
 		this.tokenService = tokenService;
-		this.patientService = patientService;
 		this.passwordEncoder = passwordEncoder;
 		this.props = props;
 		this.clock = clock;
@@ -52,7 +49,7 @@ public class AuthService {
 	}
 
 	/**
-	 * Tự đăng ký: luôn là USER (bệnh nhân), kèm hồ sơ bệnh nhân trong cùng transaction. Đăng ký xong trả luôn token
+	 * Tự đăng ký: luôn là USER (bệnh nhân), kèm mã bệnh nhân. Đăng ký xong trả luôn token
 	 * (đăng nhập tự động).
 	 */
 	@Transactional
@@ -67,8 +64,8 @@ public class AuthService {
 		user.setFullName(req.fullName().trim());
 		user.setPasswordHash(passwordEncoder.encode(req.password()));
 		user.setRole(Role.USER);
+		userAccounts.assignPatientCode(user);
 		userRepository.saveAndFlush(user);
-		patientService.createForUser(user, user.getId());
 		return tokenService.issueTokens(user);
 	}
 

@@ -50,11 +50,10 @@ app:
     max-upload-size: ${APP_IMAGE_MAX_UPLOAD_SIZE:10MB}
     min-short-side: ${APP_IMAGE_MIN_SHORT_SIDE:256}
     max-dimension: ${APP_IMAGE_MAX_DIMENSION:8000}
-  patient:
-    max-text-length: ${APP_PATIENT_MAX_TEXT_LENGTH:2000}
-  visit:
-    extra-max-size: ${APP_VISIT_EXTRA_MAX_SIZE:32KB}
-    extra-max-depth: ${APP_VISIT_EXTRA_MAX_DEPTH:3}
+  profile:
+    max-text-length: ${APP_PROFILE_MAX_TEXT_LENGTH:2000}
+  prediction:
+    lam-sang-max-size: ${APP_PREDICTION_LAM_SANG_MAX_SIZE:32KB}
   predict:
     enabled: ${PREDICT_ENABLED:true}
     base-url: ${PREDICT_BASE_URL:http://localhost:8001}

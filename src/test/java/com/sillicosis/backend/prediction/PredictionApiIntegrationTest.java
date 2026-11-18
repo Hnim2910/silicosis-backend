@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -18,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -43,6 +46,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.jayway.jsonpath.JsonPath;
@@ -54,7 +58,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 /**
- * Dự đoán New Way qua một server HTTP giả (JDK HttpServer) thay cho service FastAPI; Postgres thật
+ * Lượt chẩn đoán qua một server HTTP giả (JDK HttpServer) thay cho service FastAPI; Postgres thật
  * (Testcontainers). Dữ liệu đều là dữ liệu giả.
  */
 @SpringBootTest
@@ -78,7 +82,8 @@ class PredictionApiIntegrationTest {
 			""";
 
 	private static final String SCHEMA = """
-			{"kind":{"ho":"muc","fvc":"so","cviec":"chu"},"levels":{"ho":["Co","Khong"]}}
+			{"kind":{"ho":"muc","fvc":"so","cviec":"chu","gioitinh":"muc","namsinh":"so"},
+			 "levels":{"ho":["Co","Khong"],"gioitinh":["Nam","Nu"]}}
 			""";
 
 	private static final String LAM_SANG = """
@@ -93,6 +98,8 @@ class PredictionApiIntegrationTest {
 	private static final AtomicBoolean WELL_FORMED = new AtomicBoolean();
 
 	private static final AtomicReference<String> LAST_PATH = new AtomicReference<>();
+
+	private static final AtomicReference<String> LAST_BODY = new AtomicReference<>();
 
 	private static final HttpServer SERVER = startServer();
 
@@ -120,184 +127,216 @@ class PredictionApiIntegrationTest {
 	}
 
 	@Test
-	void predictsOnSubmitRerunsAndFollowsAttachedImage() throws Exception {
-		String token = register("Người Thử Dự Đoán");
-		String patientId = myPatientId(token);
-		String imageId = upload(token, 300, 300);
+	void imageAndClinicalInOneRequestWithProfileCopiedIn() throws Exception {
+		Account me = register("Người Thử Dự Đoán");
+		authed(put("/api/users/me"), me.token(), """
+				{"fullName":"Người Thử Dự Đoán","email":"%s","birthDate":"1975-04-02","gender":"MALE",
+				 "occupation":"Thợ nghiền đá","workplace":"Mỏ đá thử","exposureHistory":"Bụi đá 12 năm"}
+				""".formatted(me.email()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.startsWith("BN-")))
+			.andExpect(jsonPath("$.workplace").value("Mỏ đá thử"))
+			.andExpect(jsonPath("$.exposureHistory").value("Bụi đá 12 năm"))
+			.andExpect(jsonPath("$.riskFactors").doesNotExist());
 
-		// Gửi lượt khám kèm ảnh + lâm sàng → gọi /predict/clinical-image, kết quả trong latestPrediction
 		int before = CALLS.get();
-		String body = authed(post("/api/patients/" + patientId + "/visits"), token,
-				"{\"imageId\":\"%s\",\"extra\":{\"lam_sang\":%s}}".formatted(imageId, LAM_SANG))
+		String body = submit(me.token(), "{\"examDate\":\"2026-11-01\",\"lamSang\":%s}".formatted(LAM_SANG),
+				png(300, 300))
 			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.extra.lam_sang.ho").value("Co"))
-			.andExpect(jsonPath("$.latestPrediction.status").value("SUCCESS"))
-			.andExpect(jsonPath("$.latestPrediction.coAnh").value(true))
-			.andExpect(jsonPath("$.latestPrediction.pLamSang").value(0.2))
-			.andExpect(jsonPath("$.latestPrediction.pAnh").value(0.6))
-			.andExpect(jsonPath("$.latestPrediction.pGhep").value(0.55))
-			.andExpect(jsonPath("$.latestPrediction.nguongGhep").value(0.207134))
-			.andExpect(jsonPath("$.latestPrediction.ketLuanCuoi").value(true))
-			.andExpect(jsonPath("$.latestPrediction.probability").value(0.55))
-			.andExpect(jsonPath("$.latestPrediction.threshold").value(0.207134))
-			.andExpect(jsonPath("$.latestPrediction.label").value("Co"))
-			.andExpect(jsonPath("$.latestPrediction.modelVersion").value("abc123def456"))
-			.andExpect(jsonPath("$.latestPrediction.imageId").value(imageId))
-			.andExpect(jsonPath("$.latestPrediction.experimental").value(true))
-			.andExpect(jsonPath("$.latestPrediction.disclaimer").isNotEmpty())
-			.andExpect(jsonPath("$.patient.id").value(patientId))
+			.andExpect(header().exists("Location"))
+			.andExpect(jsonPath("$.examDate").value("2026-11-01"))
+			.andExpect(jsonPath("$.lamSang.ho").value("Co"))
+			.andExpect(jsonPath("$.lamSang.gioitinh").value("Nam"))
+			.andExpect(jsonPath("$.lamSang.namsinh").value(1975))
+			.andExpect(jsonPath("$.image.contentType").value("image/png"))
+			.andExpect(jsonPath("$.image.width").value(300))
+			.andExpect(jsonPath("$.status").value("SUCCESS"))
+			.andExpect(jsonPath("$.coAnh").value(true))
+			.andExpect(jsonPath("$.pLamSang").value(0.2))
+			.andExpect(jsonPath("$.pAnh").value(0.6))
+			.andExpect(jsonPath("$.pGhep").value(0.55))
+			.andExpect(jsonPath("$.nguongGhep").value(0.207134))
+			.andExpect(jsonPath("$.ketLuanCuoi").value(true))
+			.andExpect(jsonPath("$.modelVersion").value("abc123def456"))
+			.andExpect(jsonPath("$.experimental").value(true))
+			.andExpect(jsonPath("$.disclaimer").isNotEmpty())
+			.andExpect(jsonPath("$.user.fullName").value("Người Thử Dự Đoán"))
+			.andExpect(jsonPath("$.user.code").value(org.hamcrest.Matchers.startsWith("BN-")))
 			.andReturn().getResponse().getContentAsString();
-		String visitId = JsonPath.read(body, "$.id");
-		String first = JsonPath.read(body, "$.latestPrediction.id");
+		String id = JsonPath.read(body, "$.id");
 		assertThat(CALLS.get()).isEqualTo(before + 1);
 		assertThat(LAST_PATH.get()).isEqualTo("/predict/clinical-image");
 		assertThat(WELL_FORMED).isTrue();
+		assertThat(LAST_BODY.get()).contains("\"gioitinh\":\"Nam\"").contains("\"namsinh\":1975");
 
-		authed(get("/api/visits/" + visitId), token, null).andExpect(jsonPath("$.latestPrediction.id").value(first));
-		authed(get("/api/patients/" + patientId + "/visits"), token, null)
-			.andExpect(jsonPath("$.content[0].latestPrediction.id").value(first));
-
-		// Gắn lại đúng ảnh đó: không gọi lại service
-		authed(put("/api/visits/" + visitId + "/image"), token, "{\"imageId\":\"%s\"}".formatted(imageId))
+		authed(get("/api/predictions/" + id), me.token(), null)
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.latestPrediction.id").value(first));
-		assertThat(CALLS.get()).isEqualTo(before + 1);
+			.andExpect(jsonPath("$.id").value(id));
+		authed(get("/api/predictions"), me.token(), null)
+			.andExpect(jsonPath("$.totalElements").value(1))
+			.andExpect(jsonPath("$.content[0].id").value(id));
+		authed(get("/api/predictions/" + id + "/image"), me.token(), null)
+			.andExpect(status().isOk())
+			.andExpect(content().contentType("image/png"))
+			.andExpect(header().string("Cache-Control", "private, no-store"));
 
-		// Dự đoán lại → bản ghi mới trở thành mới nhất
-		String rerun = JsonPath.read(authed(post("/api/visits/" + visitId + "/predictions"), token, null)
+		// Lượt đã thành công không thử lại được
+		authed(post("/api/predictions/" + id + "/retry"), me.token(), null)
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("PREDICTION_NOT_FAILED"));
+
+		// Người khác → 404 ở mọi thao tác
+		String stranger = register("Người Lạ Dự Đoán").token();
+		authed(get("/api/predictions/" + id), stranger, null).andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("PREDICTION_NOT_FOUND"));
+		authed(get("/api/predictions/" + id + "/image"), stranger, null).andExpect(status().isNotFound());
+		authed(post("/api/predictions/" + id + "/retry"), stranger, null).andExpect(status().isNotFound());
+		authed(delete("/api/predictions/" + id), stranger, null).andExpect(status().isNotFound());
+		authed(get("/api/predictions"), stranger, null).andExpect(jsonPath("$.totalElements").value(0));
+
+		// Chủ lượt xoá mềm → biến mất khỏi danh sách
+		authed(delete("/api/predictions/" + id), me.token(), null).andExpect(status().isNoContent());
+		authed(get("/api/predictions/" + id), me.token(), null).andExpect(status().isNotFound());
+		authed(get("/api/predictions"), me.token(), null).andExpect(jsonPath("$.totalElements").value(0));
+	}
+
+	@Test
+	void clinicalOnlyUsesClinicalEndpointAndHasNoImage() throws Exception {
+		String token = register("Người Thử Lâm Sàng").token();
+		String id = JsonPath.read(submit(token, "{\"lamSang\":%s}".formatted(LAM_SANG), null)
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.status").value("SUCCESS"))
+			.andExpect(jsonPath("$.coAnh").value(false))
+			.andExpect(jsonPath("$.pLamSang").value(0.03))
+			.andExpect(jsonPath("$.pGhep").doesNotExist())
+			.andExpect(jsonPath("$.image").doesNotExist())
+			.andExpect(jsonPath("$.ketLuanCuoi").value(false))
+			.andExpect(jsonPath("$.examDate").isNotEmpty())
+			// Hồ sơ chưa có giới tính/ngày sinh → không tự thêm
+			.andExpect(jsonPath("$.lamSang.gioitinh").doesNotExist())
 			.andReturn().getResponse().getContentAsString(), "$.id");
-		assertThat(rerun).isNotEqualTo(first);
-		authed(get("/api/visits/" + visitId), token, null).andExpect(jsonPath("$.latestPrediction.id").value(rerun));
-
-		// Người khác → 404
-		authed(post("/api/visits/" + visitId + "/predictions"), register("Người Lạ Dự Đoán"), null)
-			.andExpect(status().isNotFound());
-
-		// Gỡ ảnh → dự đoán lại chỉ từ lâm sàng (/predict/clinical)
-		authed(delete("/api/visits/" + visitId + "/image"), token, null).andExpect(status().isNoContent());
 		assertThat(LAST_PATH.get()).isEqualTo("/predict/clinical");
 		assertThat(WELL_FORMED).isTrue();
-		authed(get("/api/visits/" + visitId), token, null)
-			.andExpect(jsonPath("$.latestPrediction.status").value("SUCCESS"))
-			.andExpect(jsonPath("$.latestPrediction.coAnh").value(false))
-			.andExpect(jsonPath("$.latestPrediction.imageId").doesNotExist())
-			.andExpect(jsonPath("$.latestPrediction.pGhep").doesNotExist())
-			.andExpect(jsonPath("$.latestPrediction.ketLuanCuoi").value(false))
-			.andExpect(jsonPath("$.latestPrediction.label").value("Khong"))
-			.andExpect(jsonPath("$.latestPrediction.threshold").value(0.051546));
-
-		// Gắn ảnh mới qua PUT → dự đoán cho ảnh mới
-		String other = upload(token, 310, 300);
-		authed(put("/api/visits/" + visitId + "/image"), token, "{\"imageId\":\"%s\"}".formatted(other))
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.latestPrediction.status").value("SUCCESS"))
-			.andExpect(jsonPath("$.latestPrediction.imageId").value(other));
-
-		// Sửa lượt khám → dự đoán lại
-		int beforeUpdate = CALLS.get();
-		authed(put("/api/visits/" + visitId), token, "{\"extra\":{\"lam_sang\":{\"ho\":\"Khong\"}}}")
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.latestPrediction.imageId").value(other));
-		assertThat(CALLS.get()).isEqualTo(beforeUpdate + 1);
-
-		// Chỉ lâm sàng ngay khi tạo
-		authed(post("/api/patients/" + patientId + "/visits"), token,
-				"{\"extra\":{\"lam_sang\":%s}}".formatted(LAM_SANG))
-			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.latestPrediction.status").value("SUCCESS"))
-			.andExpect(jsonPath("$.latestPrediction.coAnh").value(false))
-			.andExpect(jsonPath("$.latestPrediction.pLamSang").value(0.03));
-
-		// Không có ảnh lẫn lâm sàng (chỉ cột cũ): không gọi service; dự đoán thủ công → 400
-		int beforeEmpty = CALLS.get();
-		String bare = JsonPath.read(authed(post("/api/patients/" + patientId + "/visits"), token, "{\"pulse\":70}")
-			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.latestPrediction").doesNotExist())
-			.andReturn().getResponse().getContentAsString(), "$.id");
-		assertThat(CALLS.get()).isEqualTo(beforeEmpty);
-		authed(post("/api/visits/" + bare + "/predictions"), token, null)
-			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value("VISIT_HAS_NO_INPUT"));
+		authed(get("/api/predictions/" + id + "/image"), token, null).andExpect(status().isNotFound());
 	}
 
 	@Test
-	void invalidClinicalCodesRejectedBeforeSaving() throws Exception {
-		String token = register("Người Thử Mã Sai");
-		String patientId = myPatientId(token);
+	void imageOnlyIsAccepted() throws Exception {
+		String token = register("Người Thử Chỉ Ảnh").token();
+		submit(token, null, png(300, 300))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.status").value("SUCCESS"))
+			.andExpect(jsonPath("$.coAnh").value(true))
+			.andExpect(jsonPath("$.lamSang").isEmpty());
+		assertThat(LAST_PATH.get()).isEqualTo("/predict/clinical-image");
+	}
+
+	@Test
+	void invalidInputIsRejectedBeforeCallingTheModel() throws Exception {
+		String token = register("Người Thử Mã Sai").token();
 		int before = CALLS.get();
-		authed(post("/api/patients/" + patientId + "/visits"), token,
-				"{\"extra\":{\"lam_sang\":{\"ho\":\"Có\",\"fvc\":\"abc\",\"tinh\":\"x\"}}}")
+
+		submit(token, "{\"lamSang\":{\"ho\":\"Có\",\"fvc\":\"abc\",\"tinh\":\"x\"}}", null)
 			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.fieldErrors['extra.lam_sang.ho']").exists())
-			.andExpect(jsonPath("$.fieldErrors['extra.lam_sang.fvc']").exists())
-			.andExpect(jsonPath("$.fieldErrors['extra.lam_sang.tinh']").exists());
+			.andExpect(jsonPath("$.fieldErrors['lamSang.ho']").exists())
+			.andExpect(jsonPath("$.fieldErrors['lamSang.fvc']").exists())
+			.andExpect(jsonPath("$.fieldErrors['lamSang.tinh']").exists());
+		submit(token, "{\"lamSang\":{\"ho\":{\"x\":1}}}", null)
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.fieldErrors['lamSang.ho']").exists());
+		submit(token, "{\"lamSang\":[1,2]}", null)
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.fieldErrors['lamSang']").exists());
+		submit(token, "{\"examDate\":\"2999-01-01\",\"lamSang\":%s}".formatted(LAM_SANG), null)
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.fieldErrors.examDate").exists());
+		// Không có ảnh lẫn lâm sàng
+		submit(token, "{\"lamSang\":{\"ho\":\"\"}}", null)
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("EMPTY_SUBMISSION"));
+		// Tệp không phải ảnh
+		submit(token, null, "not an image".getBytes(StandardCharsets.UTF_8))
+			.andExpect(status().is4xxClientError());
+
 		assertThat(CALLS.get()).isEqualTo(before);
+		authed(get("/api/predictions"), token, null).andExpect(jsonPath("$.totalElements").value(0));
 	}
 
 	@Test
-	void serviceErrorsAreStoredAsFailedAndStillReturn201() throws Exception {
-		String token = register("Người Thử Lỗi");
-		String patientId = myPatientId(token);
+	void serviceErrorsAreStoredAsFailedAndRetryUpdatesTheSameRow() throws Exception {
+		String token = register("Người Thử Lỗi").token();
 
 		MODE.set("error500");
-		String body = authed(post("/api/patients/" + patientId + "/visits"), token,
-				"{\"imageId\":\"%s\"}".formatted(upload(token, 300, 300)))
+		String id = JsonPath.read(submit(token, null, png(300, 300))
 			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.latestPrediction.status").value("FAILED"))
-			.andExpect(jsonPath("$.latestPrediction.errorCode").value("PREDICT_UNAVAILABLE"))
-			.andExpect(jsonPath("$.latestPrediction.probability").doesNotExist())
-			.andReturn().getResponse().getContentAsString();
-		String visitId = JsonPath.read(body, "$.id");
+			.andExpect(jsonPath("$.status").value("FAILED"))
+			.andExpect(jsonPath("$.errorCode").value("PREDICT_UNAVAILABLE"))
+			.andExpect(jsonPath("$.pLamSang").doesNotExist())
+			.andExpect(jsonPath("$.image.contentType").value("image/png"))
+			.andReturn().getResponse().getContentAsString(), "$.id");
 
-		assertRerunFails(token, visitId, "slow", "PREDICT_TIMEOUT");
-		assertRerunFails(token, visitId, "garbage", "PREDICT_BAD_RESPONSE");
-		assertRerunFails(token, visitId, "noversion", "PREDICT_BAD_RESPONSE");
-		assertRerunFails(token, visitId, "reject400", "PREDICT_IMAGE_REJECTED");
-		assertRerunFails(token, visitId, "reject422", "PREDICT_INVALID_INPUT");
+		assertRetryFails(token, id, "slow", "PREDICT_TIMEOUT");
+		assertRetryFails(token, id, "garbage", "PREDICT_BAD_RESPONSE");
+		assertRetryFails(token, id, "noversion", "PREDICT_BAD_RESPONSE");
+		assertRetryFails(token, id, "reject400", "PREDICT_IMAGE_REJECTED");
+		assertRetryFails(token, id, "reject422", "PREDICT_INVALID_INPUT");
 
-		// Service chạy lại bình thường → thành công, trở thành kết quả mới nhất
+		// Service chạy lại bình thường → thành công trên chính dòng đó (ảnh đọc lại từ đĩa)
 		MODE.set("ok");
-		authed(post("/api/visits/" + visitId + "/predictions"), token, null)
-			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.status").value("SUCCESS"));
-		authed(get("/api/visits/" + visitId), token, null)
-			.andExpect(jsonPath("$.latestPrediction.status").value("SUCCESS"));
+		authed(post("/api/predictions/" + id + "/retry"), token, null)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.id").value(id))
+			.andExpect(jsonPath("$.status").value("SUCCESS"))
+			.andExpect(jsonPath("$.errorCode").doesNotExist())
+			.andExpect(jsonPath("$.pGhep").value(0.55));
+		assertThat(LAST_PATH.get()).isEqualTo("/predict/clinical-image");
+		authed(get("/api/predictions"), token, null).andExpect(jsonPath("$.totalElements").value(1));
 	}
 
 	@Test
-	void adminListsAllVisitsWithPatientSummary() throws Exception {
-		String token = register("Người Thử Danh Sách");
-		String patientId = myPatientId(token);
-		String visitId = JsonPath.read(authed(post("/api/patients/" + patientId + "/visits"), token,
-				"{\"imageId\":\"%s\"}".formatted(upload(token, 300, 300)))
+	void adminListsAllPredictionsWithOwnerSummary() throws Exception {
+		String token = register("Người Thử Danh Sách").token();
+		String id = JsonPath.read(submit(token, "{\"lamSang\":%s}".formatted(LAM_SANG), null)
 			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
 
 		String admin = adminToken();
-		String list = authed(get("/api/visits?size=100"), admin, null)
+		String list = authed(get("/api/predictions/all?size=100"), admin, null)
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.totalElements").isNumber())
 			.andReturn().getResponse().getContentAsString();
-		String base = "$.content[?(@.id == '%s')]".formatted(visitId);
-		assertThat(JsonPath.<java.util.List<String>>read(list, base + ".patient.fullName"))
-			.containsExactly("Người Thử Danh Sách");
-		assertThat(JsonPath.<java.util.List<String>>read(list, base + ".patient.code")).singleElement()
+		String base = "$.content[?(@.id == '%s')]".formatted(id);
+		assertThat(JsonPath.<List<String>>read(list, base + ".user.fullName")).containsExactly("Người Thử Danh Sách");
+		assertThat(JsonPath.<List<String>>read(list, base + ".user.code")).singleElement()
 			.asString().startsWith("BN-");
-		assertThat(JsonPath.<java.util.List<String>>read(list, base + ".latestPrediction.status"))
-			.containsExactly("SUCCESS");
+		authed(get("/api/predictions/" + id), admin, null).andExpect(status().isOk());
 
-		authed(get("/api/visits"), token, null).andExpect(status().isForbidden());
+		authed(get("/api/predictions/all"), token, null).andExpect(status().isForbidden());
 	}
 
 	// ---------- Tiện ích ----------
 
-	private void assertRerunFails(String token, String visitId, String mode, String code) throws Exception {
+	private record Account(String token, String email) {
+	}
+
+	private void assertRetryFails(String token, String id, String mode, String code) throws Exception {
 		MODE.set(mode);
-		authed(post("/api/visits/" + visitId + "/predictions"), token, null)
-			.andExpect(status().isCreated())
+		authed(post("/api/predictions/" + id + "/retry"), token, null)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.id").value(id))
 			.andExpect(jsonPath("$.status").value("FAILED"))
 			.andExpect(jsonPath("$.errorCode").value(code));
+	}
+
+	private ResultActions submit(String token, String data, byte[] image) throws Exception {
+		MockMultipartHttpServletRequestBuilder request = multipart("/api/predictions");
+		if (data != null) {
+			request.file(new MockMultipartFile("data", "", MediaType.APPLICATION_JSON_VALUE,
+					data.getBytes(StandardCharsets.UTF_8)));
+		}
+		if (image != null) {
+			request.file(new MockMultipartFile("file", "xray.png", "image/png", image));
+		}
+		request.header("Authorization", "Bearer " + token);
+		return mvc.perform(request);
 	}
 
 	private static HttpServer startServer() {
@@ -319,6 +358,7 @@ class PredictionApiIntegrationTest {
 		String path = exchange.getRequestURI().getPath();
 		LAST_PATH.set(path);
 		String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+		LAST_BODY.set(request);
 		String type = exchange.getRequestHeaders().getFirst("Content-Type");
 		boolean image = "/predict/clinical-image".equals(path);
 		// uvicorn từ chối yêu cầu có "Upgrade: h2c" (400), server JDK thì không: kiểm tra ở đây.
@@ -367,25 +407,13 @@ class PredictionApiIntegrationTest {
 		}
 	}
 
-	private String myPatientId(String token) throws Exception {
-		return JsonPath.read(authed(get("/api/patients/me"), token, null).andExpect(status().isOk()).andReturn()
-			.getResponse().getContentAsString(), "$.id");
-	}
-
-	private String upload(String token, int width, int height) throws Exception {
-		String body = mvc.perform(multipart("/api/images")
-				.file(new MockMultipartFile("file", "xray.png", "image/png", png(width, height)))
-				.header("Authorization", "Bearer " + token))
-			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-		return JsonPath.read(body, "$.id");
-	}
-
-	private String register(String fullName) throws Exception {
+	private Account register(String fullName) throws Exception {
+		String email = uniqueEmail();
 		String body = authed(post("/api/auth/register"), null, """
 				{"fullName":"%s","email":"%s","password":"matkhau123"}
-				""".formatted(fullName, uniqueEmail())).andExpect(status().isCreated()).andReturn().getResponse()
+				""".formatted(fullName, email)).andExpect(status().isCreated()).andReturn().getResponse()
 			.getContentAsString();
-		return JsonPath.read(body, "$.accessToken");
+		return new Account(JsonPath.read(body, "$.accessToken"), email);
 	}
 
 	private String adminToken() throws Exception {

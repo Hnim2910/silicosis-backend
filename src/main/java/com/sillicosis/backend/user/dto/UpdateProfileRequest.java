@@ -10,13 +10,20 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Ghi đè toàn bộ thông tin tài khoản và hồ sơ bệnh nhân (trường không gửi thành null). Độ dài
+ * {@code exposureHistory}/{@code riskFactors} kiểm tra ở service theo {@code app.profile.max-text-length}.
+ */
 public record UpdateProfileRequest(
 		@NotBlank(message = "Vui lòng nhập họ tên.") @Size(min = 2, max = 150, message = "Họ tên dài 2–150 ký tự.") String fullName,
 		@NotBlank(message = "Vui lòng nhập email.") @Email(message = "Email không hợp lệ.") @Size(max = 255) String email,
 		@VnPhone String phone,
 		@Past(message = "Ngày sinh phải ở quá khứ.") LocalDate birthDate,
 		Gender gender,
-		@Size(max = 150, message = "Nghề nghiệp tối đa 150 ký tự.") String occupation) {
+		@Size(max = 150, message = "Nghề nghiệp tối đa 150 ký tự.") String occupation,
+		@Size(max = 255, message = "Nơi làm việc tối đa 255 ký tự.") String workplace,
+		String exposureHistory,
+		String riskFactors) {
 
 	@Override
 	public String toString() {

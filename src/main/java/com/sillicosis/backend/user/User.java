@@ -61,6 +61,21 @@ public class User {
 
 	private String occupation;
 
+	// ---------- Hồ sơ bệnh nhân (chỉ USER) ----------
+
+	/** Mã bệnh nhân BN-000001, sinh từ user_code_seq khi tạo tài khoản USER; null với ADMIN. */
+	@Column(updatable = false, length = 20)
+	private String code;
+
+	private String workplace;
+
+	/** Tiền sử phơi nhiễm bụi. */
+	@Column(name = "exposure_history")
+	private String exposureHistory;
+
+	@Column(name = "risk_factors")
+	private String riskFactors;
+
 	@Column(name = "failed_login_attempts", nullable = false)
 	private int failedLoginAttempts;
 

@@ -36,8 +36,6 @@ import tools.jackson.databind.json.JsonMapper;
 @Component
 public class PredictClient {
 
-	public static final String ENGINE = "NEW_WAY";
-
 	private final RestClient restClient;
 
 	private final JsonMapper jsonMapper;

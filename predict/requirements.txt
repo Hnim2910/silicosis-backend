@@ -12,6 +12,7 @@ numpy==2.2.2
 # New Way (ml/new_way/requirements.txt)
 pandas==2.2.3
 xgboost==3.4.1
+scikit-learn>=1.4.0
 
 # test
 pytest==8.3.4

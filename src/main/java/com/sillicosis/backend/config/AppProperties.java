@@ -11,7 +11,7 @@ import org.springframework.util.unit.DataSize;
 @ConfigurationProperties(prefix = "app")
 public record AppProperties(@DefaultValue Jwt jwt, @DefaultValue Security security, @DefaultValue Otp otp,
 		@DefaultValue Mail mail, @DefaultValue Admin admin, @DefaultValue Cors cors, @DefaultValue Storage storage,
-		@DefaultValue Profile profile, @DefaultValue Prediction prediction, @DefaultValue Predict predict) {
+		@DefaultValue Prediction prediction, @DefaultValue Predict predict) {
 
 	/**
 	 * @param secret khoá HMAC-SHA256, tối thiểu 32 byte
@@ -40,10 +40,6 @@ public record AppProperties(@DefaultValue Jwt jwt, @DefaultValue Security securi
 
 	public record Storage(String imagesDir, @DefaultValue("10MB") DataSize maxUploadSize,
 		@DefaultValue("256") int minShortSide, @DefaultValue("8000") int maxDimension) {
-	}
-
-	/** Hồ sơ bệnh nhân trong users. @param maxTextLength giới hạn ký tự cho exposureHistory, riskFactors */
-	public record Profile(@DefaultValue("2000") int maxTextLength) {
 	}
 
 	/**

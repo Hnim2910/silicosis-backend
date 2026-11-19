@@ -46,7 +46,9 @@ Request là `multipart/form-data`, gồm hai phần, **cả hai đều không b�
   - Cột danh mục dùng **mã không dấu**, ví dụ `"Co"`, `"Khong"`, `"Co hut thuoc"`.
   - `null` hoặc `""` nghĩa là bỏ trống.
   - Tối đa 200 cột và 32 KB (`APP_PREDICTION_LAM_SANG_MAX_SIZE`).
-- **Giới tính và năm sinh lấy từ hồ sơ.** Nếu hồ sơ có `gender` là `MALE`/`FEMALE` thì backend ghi `gioitinh` = `"Nam"`/`"Nu"`. Nếu hồ sơ có `birthDate` thì backend ghi `namsinh` = năm sinh. Giá trị client gửi cho hai cột này bị ghi đè; hồ sơ chưa có thì giữ giá trị client gửi.
+- **Năm sinh lấy từ hồ sơ.** Nếu hồ sơ có `birthDate` thì backend ghi `namsinh` = năm sinh, ghi đè giá trị client gửi.
+- **Giới tính:** giữ giá trị `gioitinh` client gửi (người dùng có thể chọn "chỉ dùng cho lần này"). Để trống thì backend lấy từ hồ sơ: `MALE`/`FEMALE` → `"Nam"`/`"Nu"`.
+- Tiểu sử (`tieuSu` của hồ sơ) **không** được backend tự chép; web/app điền sẵn vào form rồi gửi trong `lamSang`. Mỗi lượt lưu nguyên `lamSang` của lúc gửi, nên sửa hồ sơ về sau không làm đổi lượt cũ.
 - **Ảnh:**
   - Định dạng xét theo nội dung tệp, không theo tên.
   - Tối đa 10 MB, cạnh ngắn ≥ 256 px, mỗi chiều ≤ 8000 px.

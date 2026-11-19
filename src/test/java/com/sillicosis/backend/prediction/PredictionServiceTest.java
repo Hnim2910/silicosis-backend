@@ -70,7 +70,7 @@ class PredictionServiceTest {
 	private PredictionService service(boolean predictEnabled) {
 		AppProperties d = TestProps.defaults();
 		AppProperties props = new AppProperties(d.jwt(), d.security(), d.otp(), d.mail(), d.admin(), d.cors(),
-				d.storage(), d.profile(), d.prediction(), new AppProperties.Predict(predictEnabled,
+				d.storage(), d.prediction(), new AppProperties.Predict(predictEnabled,
 						d.predict().baseUrl(), d.predict().timeout(), d.predict().connectTimeout()));
 		return new PredictionService(predictionRepository, userRepository,
 				clinicalValidator, new ImageProcessor(props), mock(ImageStorage.class), predictClient,
@@ -78,15 +78,22 @@ class PredictionServiceTest {
 	}
 
 	@Test
-	void profileGenderAndBirthYearOverrideWhatTheClientSent() {
+	void birthYearComesFromProfileButSentGenderIsKept() {
 		user.setGender(Gender.FEMALE);
 		user.setBirthDate(LocalDate.of(1980, 5, 6));
 		Map<String, Object> sent = new LinkedHashMap<>(Map.of("gioitinh", "Nam", "namsinh", 1999, "ho", "Co"));
 
 		Map<String, Object> input = PredictionService.withProfile(sent, user);
 
-		assertThat(input).containsEntry("gioitinh", "Nu").containsEntry("namsinh", 1980).containsEntry("ho", "Co");
-		assertThat(sent).containsEntry("gioitinh", "Nam");
+		assertThat(input).containsEntry("gioitinh", "Nam").containsEntry("namsinh", 1980).containsEntry("ho", "Co");
+		assertThat(sent).containsEntry("namsinh", 1999);
+	}
+
+	@Test
+	void missingGenderIsFilledFromProfile() {
+		user.setGender(Gender.FEMALE);
+		Map<String, Object> input = PredictionService.withProfile(Map.of("gioitinh", " ", "ho", "Co"), user);
+		assertThat(input).containsEntry("gioitinh", "Nu");
 	}
 
 	@Test

@@ -194,7 +194,7 @@ public class PredictionService {
 	}
 
 	public static ApiException disabled() {
-		return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "PREDICT_DISABLED", "Chức năng dự đoán đang tắt.");
+		return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "PREDICT_DISABLED", "Chức năng chẩn đoán đang tắt.");
 	}
 
 	// ---------- Nội bộ ----------
@@ -264,19 +264,28 @@ public class PredictionService {
 		}
 	}
 
-	/** Giới tính / năm sinh trong hồ sơ là nguồn đúng; hồ sơ chưa có thì giữ giá trị client gửi (nếu có). */
+	/**
+	 * Năm sinh luôn lấy từ ngày sinh trong hồ sơ (nếu có). Giới tính client gửi được giữ nguyên (người dùng có thể
+	 * chọn "chỉ dùng cho lần này"); để trống thì lấy từ hồ sơ.
+	 */
 	static Map<String, Object> withProfile(Map<String, Object> lamSang, User user) {
 		Map<String, Object> input = new LinkedHashMap<>(lamSang);
-		if (user.getGender() == Gender.MALE) {
-			input.put("gioitinh", "Nam");
-		}
-		else if (user.getGender() == Gender.FEMALE) {
-			input.put("gioitinh", "Nu");
+		if (isBlank(input.get("gioitinh"))) {
+			if (user.getGender() == Gender.MALE) {
+				input.put("gioitinh", "Nam");
+			}
+			else if (user.getGender() == Gender.FEMALE) {
+				input.put("gioitinh", "Nu");
+			}
 		}
 		if (user.getBirthDate() != null) {
 			input.put("namsinh", user.getBirthDate().getYear());
 		}
 		return input;
+	}
+
+	private static boolean isBlank(Object v) {
+		return v == null || v instanceof String s && s.isBlank();
 	}
 
 	/** Có ít nhất một giá trị không rỗng. */

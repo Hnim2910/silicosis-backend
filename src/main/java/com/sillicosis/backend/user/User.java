@@ -2,10 +2,14 @@ package com.sillicosis.backend.user;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -59,22 +63,16 @@ public class User {
 	@Enumerated(EnumType.STRING)
 	private Gender gender;
 
-	private String occupation;
-
 	// ---------- Hồ sơ bệnh nhân (chỉ USER) ----------
 
 	/** Mã bệnh nhân BN-000001, sinh từ user_code_seq khi tạo tài khoản USER; null với ADMIN. */
 	@Column(updatable = false, length = 20)
 	private String code;
 
-	private String workplace;
-
-	/** Tiền sử phơi nhiễm bụi. */
-	@Column(name = "exposure_history")
-	private String exposureHistory;
-
-	@Column(name = "risk_factors")
-	private String riskFactors;
+	/** Tiểu sử: mã cột → giá trị như form lâm sàng (xem {@link TieuSu}); rỗng nếu chưa điền. */
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "tieu_su", nullable = false, columnDefinition = "jsonb")
+	private Map<String, Object> tieuSu = new LinkedHashMap<>();
 
 	@Column(name = "failed_login_attempts", nullable = false)
 	private int failedLoginAttempts;

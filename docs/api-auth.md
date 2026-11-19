@@ -69,10 +69,7 @@ Khi khởi động, nếu có `ADMIN_EMAIL` + `ADMIN_PASSWORD` mà email chưa t
   "enabled": true,
   "birthDate": "1980-05-20",
   "gender": "MALE",
-  "occupation": "Thợ mỏ",
-  "workplace": "Mỏ đá Bình Minh",
-  "exposureHistory": "Nghiền đá 12 năm",
-  "riskFactors": null,
+  "tieuSu": { "cviec": "Thợ nghiền đá", "pxuong": "Nghiền sàng", "tuoinghe": 12, "hutthuoc": "Khong hut thuoc" },
   "createdAt": "2026-10-07T16:57:43.916Z",
   "updatedAt": "2026-10-07T16:57:43.916Z"
 }
@@ -80,7 +77,20 @@ Khi khởi động, nếu có `ADMIN_EMAIL` + `ADMIN_PASSWORD` mà email chưa t
 
 - `gender`: `MALE` | `FEMALE` | `OTHER` | `null`.
 - `code`: mã bệnh nhân, không đổi, không dùng lại; `null` với `ADMIN`.
-- Giới tính và năm sinh trong hồ sơ được chép vào `lamSang` mỗi khi chẩn đoán (xem [api-predictions.md](api-predictions.md)).
+- `tieuSu`: tiểu sử bệnh nhân, dùng **đúng mã cột và mã giá trị của form lâm sàng** để web/app điền sẵn vào form chẩn đoán. `{}` nếu chưa điền. Chỉ nhận các cột sau:
+
+  | Nhóm | Cột | Kiểu |
+  |---|---|---|
+  | Nghề nghiệp & phơi nhiễm | `cviec`, `pxuong`, `cviec1`, `cviec2` | chữ, ≤ 500 ký tự |
+  | | `tuoinghe`, `nampx`, `tgian1`, `tgian2` | số năm, 0–70 |
+  | | `cv5nam` | `Co` \| `Khong` |
+  | Hút thuốc & tiền sử | `hutthuoc` | `Co hut thuoc` \| `Khong hut thuoc` |
+  | | `slthuoc` | số, 0–1000 |
+  | | `tiensuhh` | `Co` \| `Khong` |
+  | | `benhhh`, `tsnoi`, `tsngoai` | chữ, ≤ 500 ký tự |
+
+  Số chấp nhận dấu phẩy thập phân (`"12,5"`) và được lưu dạng số; giá trị rỗng bị bỏ. Lỗi trả theo khoá `tieuSu.<cột>`.
+- Giới tính và năm sinh không nằm trong `tieuSu` mà lấy từ `gender` / `birthDate` (xem quy tắc chép vào `lamSang` ở [api-predictions.md](api-predictions.md)).
 
 ## 4. Quy tắc dữ liệu
 
@@ -88,12 +98,10 @@ Khi khởi động, nếu có `ADMIN_EMAIL` + `ADMIN_PASSWORD` mà email chưa t
 |---|---|
 | `email` | Bắt buộc, đúng định dạng, ≤ 255 ký tự; lưu dạng chữ thường, bỏ khoảng trắng; duy nhất |
 | `phone` | Không bắt buộc; số di động VN: `0[35789]xxxxxxxx`, chấp nhận `+84`/`84`, dấu cách, `.`, `-`; lưu dạng `0xxxxxxxxx`; duy nhất |
-| `password` | 8–72 ký tự, có ít nhất 1 chữ cái và 1 chữ số |
+| `password` | 8–72 ký tự, có ít nhất 1 chữ thường, 1 chữ hoa, 1 chữ số và 1 ký tự đặc biệt; không chứa khoảng trắng. Chỉ áp dụng khi đặt mật khẩu mới (đăng ký, đổi, đặt lại, admin tạo); mật khẩu cũ vẫn đăng nhập được |
 | `fullName` | 2–150 ký tự |
 | `birthDate` | `yyyy-MM-dd`, phải ở quá khứ, từ 1900 |
-| `occupation` | ≤ 150 ký tự |
-| `workplace` | ≤ 255 ký tự |
-| `exposureHistory`, `riskFactors` | ≤ 2000 ký tự (`APP_PROFILE_MAX_TEXT_LENGTH`) |
+| `tieuSu` | Xem bảng ở mục 3 |
 
 Email và SĐT của tài khoản đã xoá mềm được giải phóng để đăng ký lại.
 
@@ -188,12 +196,12 @@ Mỗi OTP chỉ đổi được một lần lấy `resetToken`.
 | PUT | `/api/users/me` | Cập nhật tài khoản và hồ sơ bệnh nhân | 200 `UserResponse` |
 | PUT | `/api/users/me/password` | Đổi mật khẩu | 204 |
 
-`PUT /api/users/me` **ghi đè toàn bộ** hồ sơ, nên trường bỏ trống sẽ thành `null`. `fullName` và `email` là bắt buộc; `code` không sửa được.
+`PUT /api/users/me` **ghi đè toàn bộ** hồ sơ, nên trường bỏ trống sẽ thành `null`; riêng `tieuSu` không gửi (hoặc `null`) thì giữ nguyên, gửi `{}` thì xoá hết. `fullName` và `email` là bắt buộc; `code` không sửa được.
 
 ```json
 { "fullName": "Nguyễn Văn A", "email": "a@example.com", "phone": "0912345678",
-  "birthDate": "1980-05-20", "gender": "MALE", "occupation": "Thợ mỏ",
-  "workplace": "Mỏ đá Bình Minh", "exposureHistory": "Nghiền đá 12 năm", "riskFactors": null }
+  "birthDate": "1980-05-20", "gender": "MALE",
+  "tieuSu": { "cviec": "Thợ nghiền đá", "tuoinghe": "12,5", "hutthuoc": "Khong hut thuoc" } }
 ```
 
 `PUT /api/users/me/password`:

@@ -77,10 +77,10 @@ Lưu ý:
 ## 4. Tổng quan nghiệp vụ
 
 ```
-Đăng ký (được mã BN-xxxxxx) ──► Đăng nhập ──► Hồ sơ cá nhân (giới tính, ngày sinh, nghề…)
+Đăng ký (được mã BN-xxxxxx) ──► Đăng nhập ──► Popup tiểu sử lần đầu (giới tính, ngày sinh, nghề, hút thuốc…)
                                        │
                                        ▼
-          Dự đoán mới: ngày khám + lâm sàng (+ tuỳ chọn phim X-quang)  ── 1 request ──►
+          Chẩn đoán mới: ngày khám + lâm sàng (+ tuỳ chọn phim X-quang)  ── 1 request ──►
                                        │
           Backend: kiểm tra → làm sạch ảnh → gọi service AI → lưu 1 dòng predictions
                                        │           (AI lỗi vẫn lưu, status = FAILED)
@@ -122,12 +122,15 @@ Lưu ý:
 ### 4.4. Hồ sơ cá nhân (kiêm hồ sơ bệnh nhân)
 - **Chức năng:** `GET` / `PUT /api/users/me`, đổi mật khẩu bằng `PUT /api/users/me/password` (cần mật khẩu cũ).
 - **Dữ liệu:**
-  - **thông tin tiểu sử, ít thay đổi:** họ tên, email, SĐT, ngày sinh, giới tính, nghề nghiệp, nơi làm việc, tiền sử phơi nhiễm bụi, yếu tố nguy cơ;
-  - mã bệnh nhân (chỉ đọc).
-- **Mục đích:** không phải nhập lại thông tin cố định mỗi lần chẩn đoán. Cụ thể:
-  - **giới tính và năm sinh** được backend tự chép vào đầu vào của model;
-  - **nghề nghiệp** được điền sẵn vào ô "Công việc hiện tại" của form.
-- **Ví dụ:** chị Lan cập nhật hồ sơ "Nữ, sinh 1980, thợ mài đá". Từ đó form dự đoán không hỏi lại giới tính và năm sinh nữa.
+  - tài khoản: họ tên, email, SĐT; mã bệnh nhân (chỉ đọc);
+  - ngày sinh, giới tính;
+  - **tiểu sử** (`users.tieu_su`, JSONB): đúng các trường của form lâm sàng thuộc nhóm "Nghề nghiệp & phơi nhiễm" và "Hút thuốc & tiền sử", cùng mã cột/mã giá trị (`cviec`, `pxuong`, `tuoinghe`, …, `hutthuoc`, `tiensuhh`, `tsnoi`, `tsngoai`). Backend kiểm tra theo `user/TieuSu.java` (khoảng số, mã lựa chọn, ≤ 500 ký tự).
+- **Mục đích:** không phải nhập lại thông tin cố định mỗi lần chẩn đoán.
+  - Lần đầu đăng nhập, khi hồ sơ chưa có giới tính, ngày sinh và tiểu sử, trang Tổng quan mở popup điền tiểu sử (có thể "Để sau").
+  - Form chẩn đoán điền sẵn tiểu sử; năm sinh lấy từ ngày sinh (chỉ đọc).
+  - Nếu tiểu sử trong form khác hồ sơ, bấm **Chẩn đoán** sẽ hiện popup liệt kê từng trường khác: "Cập nhật hồ sơ và chẩn đoán" hoặc "Chỉ dùng cho lần này".
+  - Backend: `namsinh` luôn lấy từ `birth_date`; `gioitinh` giữ giá trị client gửi, để trống thì lấy từ `gender`.
+- **Ví dụ:** chị Lan điền popup lần đầu "Nữ, sinh 12/03/1980, thợ mài đá, tuổi nghề 10 năm". Từ đó form chẩn đoán đã có sẵn các thông tin này.
 
 ### 4.5. Lượt chẩn đoán
 - **Chức năng:** `POST /api/predictions` nhận **một request multipart** gồm:
@@ -144,7 +147,8 @@ Lưu ý:
   - **Ảnh:**
     - chỉ PNG/JPEG (xét theo nội dung tệp), ≤ 10 MB, cạnh ngắn ≥ 256 px;
     - được mã hoá lại để **xoá EXIF**;
-    - web bắt người dùng tick **"Đây là phim X-quang ngực thẳng"**, vì model chỉ học trên loại phim này.
+    - web bắt người dùng tick xác nhận đây là **phim X-quang ngực thẳng**, vì model chỉ học trên loại phim này (hệ thống chưa tự nhận biết loại ảnh).
+  - **Web:** trang "Chẩn đoán mới" gồm 3 bước *Thông tin lâm sàng → Ảnh X-quang → Xác nhận và chẩn đoán*; nhập lâm sàng từ file chỉ nhận `.xlsx` đúng mẫu (`public/templates/mau-thong-tin-lam-sang.xlsx`).
   - **Service AI lỗi:** lượt vẫn được lưu với `status = FAILED`, và nút **Thử lại** chạy lại model ngay trên lượt đó.
   - **Xoá:** xoá mềm.
 - **Ví dụ:** tháng 3, anh Nam khám định kỳ, nhập "ho có, khó thở khi gắng sức, FVC 72,5%" kèm phim và được lượt chẩn đoán #1. Tháng 9 khám lại thì gửi lượt #2. Trang Lịch sử cho thấy cả hai.
@@ -161,9 +165,10 @@ Lưu ý:
   - Chỉ khoảng 7–8% số người trong dữ liệu là dương.
   - Ngưỡng được chọn để bắt được ≥ 80% số ca bệnh thật (ưu tiên không bỏ sót).
   - Hai luồng học trên hai nhóm người khác nhau, nên **không so sánh trực tiếp xác suất của hai luồng**.
-- **Hiển thị hiện tại trên web** (chưa chốt, xem mục 9):
-  - Có phim: hiện % điểm ghép.
-  - Chỉ lâm sàng: hiện 3 mức thấp / trung bình / cao, mốc trên tạm đặt 0,15 trong `src/constants/app.ts`.
+- **Hiển thị trên web** (nhóm đã chốt): chỉ 3 nhãn **Có nguy cơ / Nguy cơ thấp / Bị lỗi**, theo `ket_luan_cuoi`.
+  - Có phim: thêm % điểm ghép.
+  - Chỉ lâm sàng: không hiện %, kèm lời khuyên bổ sung phim X-quang.
+  - Mỗi kết quả có phần nhận xét và lời khuyên sinh theo dữ liệu đã gửi (`resultInsight` trong `src/utils/predictionDisplay.ts`).
 - **Hiệu năng trên tập test** (từ `predict/README.md`):
 
   | Luồng | ROC-AUC | Độ nhạy | Độ đặc hiệu |
@@ -228,7 +233,7 @@ Quy ước:
 
 | Bảng | Ý nghĩa | Cột đáng chú ý |
 |---|---|---|
-| `users` | Tài khoản kiêm hồ sơ bệnh nhân | `email` (unique, chữ thường), `phone` (unique, tuỳ chọn), `password_hash`, `role` (`USER`/`ADMIN`), `enabled`, `failed_login_attempts` + `locked_until`; **hồ sơ:** `code` (BN-…, null với ADMIN), `birth_date`, `gender`, `occupation`, `workplace`, `exposure_history`, `risk_factors`; `deleted_at` |
+| `users` | Tài khoản kiêm hồ sơ bệnh nhân | `email` (unique, chữ thường), `phone` (unique, tuỳ chọn), `password_hash`, `role` (`USER`/`ADMIN`), `enabled`, `failed_login_attempts` + `locked_until`; **hồ sơ:** `code` (BN-…, null với ADMIN), `birth_date`, `gender`, `tieu_su` (JSONB, xem 4.4); `deleted_at` |
 | `predictions` | Lượt chẩn đoán | `user_id`, `exam_date`, **`lam_sang` (JSONB)**: đầu vào model, đã kèm giới tính/năm sinh chụp từ hồ sơ; **ảnh** `image_storage_key`, `image_content_type`, `image_width`, `image_height`, `image_sha256` (đủ cả hoặc null cả); **kết quả** `status` (`SUCCESS`/`FAILED`), `error_code`, `p_lam_sang`, `p_anh`, `p_ghep`, các ngưỡng, `ket_luan_cuoi`, `model_version`; `deleted_at` |
 | `refresh_tokens` | Refresh token đang phát hành | `token_hash` (SHA-256), `expires_at`, `revoked_at` |
 | `password_reset_otp` | Mỗi lần yêu cầu quên mật khẩu | `otp_hash`, `expires_at`, `attempts`, `used`, `reset_token_hash` |
@@ -373,7 +378,7 @@ sillicosis-web/
 │   │   ├── login/, register/, forgot-password/   Trang công khai
 │   │   └── (workspace)/             Trang cần đăng nhập, dùng chung MainLayout
 │   │       ├── dashboard/               Tổng quan
-│   │       ├── prediction/              Dự đoán mới; prediction/[id] = kết quả một lượt
+│   │       ├── prediction/              Chẩn đoán mới; prediction/[id] = kết quả một lượt
 │   │       ├── history/                 Lịch sử; history/[id] = chi tiết
 │   │       ├── profile/                 Hồ sơ cá nhân + đổi mật khẩu
 │   │       └── admin/users, admin/records   (Admin) tài khoản, mọi lượt chẩn đoán
@@ -486,8 +491,8 @@ Mở <http://localhost:3000>.
 
 ### Bước 5 — Thử nhanh
 
-1. **Đăng ký** một tài khoản bằng email giả. Vào **Hồ sơ cá nhân**, điền giới tính, ngày sinh, nghề nghiệp.
-2. Vào **Dự đoán mới**. Form không hỏi lại giới tính và năm sinh, còn "Công việc hiện tại" đã được điền sẵn. Nhập vài trường (thêm ảnh nếu có) rồi bấm **Chẩn đoán**.
+1. **Đăng ký** một tài khoản bằng email giả và đăng nhập. Ở popup tiểu sử, điền giới tính, ngày sinh, công việc hiện tại.
+2. Vào **Chẩn đoán mới**. Phần tiểu sử đã điền sẵn. Nhập vài trường, sang bước ảnh (thêm ảnh nếu có), kiểm tra ở bước xác nhận rồi bấm **Chẩn đoán**.
 3. Xem kết quả, rồi vào **Lịch sử**. Thử **Quên mật khẩu**, lấy OTP ở <http://localhost:8025>.
 4. Đăng nhập bằng tài khoản admin để xem **Quản lý tài khoản**.
 
@@ -536,7 +541,9 @@ npm run test:e2e                         # đủ bộ; live.spec cần backend +
 
 | Việc | Hiện trạng trong code |
 |---|---|
-| **Cách hiển thị kết quả** (giữ khung sàng lọc, hay dùng % kèm 4 mức nguy cơ) | Giữ như cũ. Mức "cao" của luồng chỉ lâm sàng tạm đặt 0,15, chưa được nhóm ML kiểm định. Cần nhóm ML gửi bảng ngưỡng trên tập test cho từng luồng |
+| **Tự nhận biết ảnh có phải X-quang ngực thẳng** | Chưa làm (một thành viên nhóm phụ trách). Hiện chỉ có ô tick xác nhận |
+| **Khoảng giá trị hợp lý của các ô số** (ví dụ chiều cao 100–220 cm) | Web đề xuất trong `src/constants/clinicalFields.ts` (`RANGES`), chờ nhóm ML xác nhận |
+| **Nội dung "Hiểu về kết quả"** | Viết trong `src/constants/resultGuide.ts`, cần thành viên có chuyên môn y khoa duyệt |
 | **Giới hạn quyền admin** (chỉ quản lý tài khoản và thống kê, không xem dữ liệu y tế) | Chưa làm. Admin vẫn xem/xoá được mọi lượt chẩn đoán (`GET /api/predictions/all`). Trang "Hồ sơ bệnh nhân" của admin đã bỏ do gộp bảng |
 | **Bệnh nhân không có email** | Email vẫn bắt buộc; quên mật khẩu chỉ qua email |
 | **Thao tác hộ trên tài khoản bệnh nhân** | Hệ thống không phân biệt được ai thao tác (chủ tài khoản hay nhân viên y tế). Đây là giới hạn đã biết |

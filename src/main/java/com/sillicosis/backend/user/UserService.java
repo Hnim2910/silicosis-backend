@@ -20,7 +20,6 @@ import com.sillicosis.backend.common.ApiException;
 import com.sillicosis.backend.common.PageResponse;
 import com.sillicosis.backend.common.PhoneNumbers;
 import com.sillicosis.backend.common.InvalidFieldsException;
-import com.sillicosis.backend.config.AppProperties;
 import com.sillicosis.backend.user.dto.ChangePasswordRequest;
 import com.sillicosis.backend.user.dto.CreateUserRequest;
 import com.sillicosis.backend.user.dto.UpdateProfileRequest;
@@ -39,7 +38,6 @@ public class UserService {
 	private final UserAccounts userAccounts;
 	private final TokenService tokenService;
 	private final PasswordEncoder passwordEncoder;
-	private final AppProperties props;
 	private final Clock clock;
 
 	// ---------- Người dùng hiện tại ----------
@@ -62,10 +60,9 @@ public class UserService {
 		user.setPhone(phone);
 		user.setBirthDate(req.birthDate());
 		user.setGender(req.gender());
-		user.setOccupation(blankToNull(req.occupation()));
-		user.setWorkplace(blankToNull(req.workplace()));
-		user.setExposureHistory(blankToNull(req.exposureHistory()));
-		user.setRiskFactors(blankToNull(req.riskFactors()));
+		if (req.tieuSu() != null) {
+			user.setTieuSu(TieuSu.normalize(req.tieuSu()));
+		}
 		userRepository.flush();
 		return UserResponse.from(user);
 	}
@@ -157,20 +154,10 @@ public class UserService {
 		if (req.birthDate() != null && req.birthDate().isBefore(MIN_BIRTH_DATE)) {
 			errors.put("birthDate", "Ngày sinh không hợp lệ.");
 		}
-		int max = props.profile().maxTextLength();
-		if (length(req.exposureHistory()) > max) {
-			errors.put("exposureHistory", "Tiền sử phơi nhiễm tối đa " + max + " ký tự.");
-		}
-		if (length(req.riskFactors()) > max) {
-			errors.put("riskFactors", "Yếu tố nguy cơ tối đa " + max + " ký tự.");
-		}
+		errors.putAll(TieuSu.validate(req.tieuSu()));
 		if (!errors.isEmpty()) {
 			throw new InvalidFieldsException(errors);
 		}
-	}
-
-	private static int length(String s) {
-		return s == null ? 0 : s.codePointCount(0, s.length());
 	}
 
 	private static void forbidSelf(UUID actorId, UUID targetId) {
@@ -198,10 +185,6 @@ public class UserService {
 
 	private static String escapeLike(String s) {
 		return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-	}
-
-	private static String blankToNull(String s) {
-		return s == null || s.isBlank() ? null : s.trim();
 	}
 
 }

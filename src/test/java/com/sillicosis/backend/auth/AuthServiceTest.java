@@ -40,7 +40,7 @@ class AuthServiceTest {
 
 	private static final String EMAIL = "benhnhan@example.com";
 
-	private static final String PASSWORD = "matkhau123";
+	private static final String PASSWORD = "MatKhau@123";
 
 	private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(4);
 

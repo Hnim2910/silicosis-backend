@@ -1,6 +1,7 @@
 package com.sillicosis.backend.user.dto;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 import com.sillicosis.backend.common.VnPhone;
 import com.sillicosis.backend.user.Gender;
@@ -11,8 +12,8 @@ import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 
 /**
- * Ghi đè toàn bộ thông tin tài khoản và hồ sơ bệnh nhân (trường không gửi thành null). Độ dài
- * {@code exposureHistory}/{@code riskFactors} kiểm tra ở service theo {@code app.profile.max-text-length}.
+ * Ghi đè toàn bộ thông tin tài khoản và hồ sơ bệnh nhân (trường không gửi thành null; {@code tieuSu} không gửi thì
+ * giữ nguyên). {@code tieuSu} kiểm tra ở service theo {@link com.sillicosis.backend.user.TieuSu}.
  */
 public record UpdateProfileRequest(
 		@NotBlank(message = "Vui lòng nhập họ tên.") @Size(min = 2, max = 150, message = "Họ tên dài 2–150 ký tự.") String fullName,
@@ -20,10 +21,7 @@ public record UpdateProfileRequest(
 		@VnPhone String phone,
 		@Past(message = "Ngày sinh phải ở quá khứ.") LocalDate birthDate,
 		Gender gender,
-		@Size(max = 150, message = "Nghề nghiệp tối đa 150 ký tự.") String occupation,
-		@Size(max = 255, message = "Nơi làm việc tối đa 255 ký tự.") String workplace,
-		String exposureHistory,
-		String riskFactors) {
+		Map<String, Object> tieuSu) {
 
 	@Override
 	public String toString() {

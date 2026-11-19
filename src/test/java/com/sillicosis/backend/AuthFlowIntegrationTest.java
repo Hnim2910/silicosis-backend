@@ -80,7 +80,7 @@ class AuthFlowIntegrationTest {
 
 		// 1. Đăng ký → 201, vai trò USER, có token
 		String registered = json(post("/api/auth/register"), """
-				{"fullName":"Bệnh Nhân Thử","email":"%s","phone":"+84 912 000 %03d","password":"matkhau123"}
+				{"fullName":"Bệnh Nhân Thử","email":"%s","phone":"+84 912 000 %03d","password":"MatKhau@123"}
 				""".formatted(email.toUpperCase(), (int) (Math.random() * 1000)))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.user.role").value("USER"))
@@ -93,7 +93,7 @@ class AuthFlowIntegrationTest {
 
 		// Đăng ký trùng email → 409
 		json(post("/api/auth/register"), """
-				{"fullName":"Người Khác","email":"%s","password":"matkhau123"}
+				{"fullName":"Người Khác","email":"%s","password":"MatKhau@123"}
 				""".formatted(email)).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EMAIL_TAKEN"));
 
 		// 2. /me với access token
@@ -103,7 +103,7 @@ class AuthFlowIntegrationTest {
 			.andExpect(jsonPath("$.passwordHash").doesNotExist());
 
 		// 3. Đăng nhập bằng email → có refresh token
-		String oldRefresh = login(email, "matkhau123");
+		String oldRefresh = login(email, "MatKhau@123");
 
 		// 4. Quên mật khẩu: email có thật và email không tồn tại nhận cùng phản hồi
 		String forgotReal = json(post("/api/auth/forgot-password"), "{\"email\":\"%s\"}".formatted(email))
@@ -135,11 +135,11 @@ class AuthFlowIntegrationTest {
 		String resetToken = JsonPath.read(verified, "$.resetToken");
 
 		// 7. Đặt lại mật khẩu
-		json(post("/api/auth/reset-password"), "{\"resetToken\":\"%s\",\"newPassword\":\"matkhaumoi456\"}"
+		json(post("/api/auth/reset-password"), "{\"resetToken\":\"%s\",\"newPassword\":\"MatKhauMoi@456\"}"
 			.formatted(resetToken)).andExpect(status().isOk());
 
 		// Reset token chỉ dùng một lần
-		json(post("/api/auth/reset-password"), "{\"resetToken\":\"%s\",\"newPassword\":\"matkhaukhac789\"}"
+		json(post("/api/auth/reset-password"), "{\"resetToken\":\"%s\",\"newPassword\":\"MatKhauKhac@789\"}"
 			.formatted(resetToken)).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("INVALID_RESET_TOKEN"));
 
@@ -149,9 +149,9 @@ class AuthFlowIntegrationTest {
 			.andExpect(jsonPath("$.code").value("INVALID_REFRESH_TOKEN"));
 
 		// 9. Mật khẩu cũ không còn dùng được, mật khẩu mới thì được
-		json(post("/api/auth/login"), "{\"identifier\":\"%s\",\"password\":\"matkhau123\"}".formatted(email))
+		json(post("/api/auth/login"), "{\"identifier\":\"%s\",\"password\":\"MatKhau@123\"}".formatted(email))
 			.andExpect(status().isUnauthorized());
-		String newRefresh = login(email, "matkhaumoi456");
+		String newRefresh = login(email, "MatKhauMoi@456");
 
 		// 10. Refresh xoay vòng token; logout thu hồi
 		String rotated = json(post("/api/auth/refresh"), "{\"refreshToken\":\"%s\"}".formatted(newRefresh))
@@ -171,11 +171,11 @@ class AuthFlowIntegrationTest {
 		String email = uniqueEmail();
 		String phone = "0987" + String.format("%06d", (int) (Math.random() * 1_000_000));
 		json(post("/api/auth/register"), """
-				{"fullName":"Người Thử SĐT","email":"%s","phone":"%s","password":"matkhau123"}
+				{"fullName":"Người Thử SĐT","email":"%s","phone":"%s","password":"MatKhau@123"}
 				""".formatted(email, phone)).andExpect(status().isCreated());
 
 		// Đăng nhập bằng SĐT dạng +84
-		login("+84" + phone.substring(1), "matkhau123");
+		login("+84" + phone.substring(1), "MatKhau@123");
 
 		for (int i = 0; i < 4; i++) {
 			json(post("/api/auth/login"), "{\"identifier\":\"%s\",\"password\":\"saimatkhau1\"}".formatted(phone))
@@ -185,7 +185,7 @@ class AuthFlowIntegrationTest {
 			.andExpect(status().isLocked())
 			.andExpect(jsonPath("$.code").value("ACCOUNT_LOCKED"));
 		// Bị khoá tạm thì mật khẩu đúng cũng không vào được
-		json(post("/api/auth/login"), "{\"identifier\":\"%s\",\"password\":\"matkhau123\"}".formatted(phone))
+		json(post("/api/auth/login"), "{\"identifier\":\"%s\",\"password\":\"MatKhau@123\"}".formatted(phone))
 			.andExpect(status().isLocked());
 	}
 
@@ -226,7 +226,7 @@ class AuthFlowIntegrationTest {
 		// USER → 403
 		String patientEmail = uniqueEmail();
 		String registered = json(post("/api/auth/register"), """
-				{"fullName":"Bệnh Nhân","email":"%s","password":"matkhau123"}
+				{"fullName":"Bệnh Nhân","email":"%s","password":"MatKhau@123"}
 				""".formatted(patientEmail)).andReturn().getResponse().getContentAsString();
 		String patientToken = JsonPath.read(registered, "$.accessToken");
 		mvc.perform(get("/api/users").header("Authorization", "Bearer " + patientToken))
@@ -241,14 +241,14 @@ class AuthFlowIntegrationTest {
 		admin.setEmail(adminEmail);
 		admin.setFullName("Quản Trị Thử");
 		admin.setRole(Role.ADMIN);
-		admin.setPasswordHash(passwordEncoder.encode("admin12345"));
+		admin.setPasswordHash(passwordEncoder.encode("Admin@12345"));
 		userRepository.saveAndFlush(admin);
-		String adminToken = accessToken(adminEmail, "admin12345");
+		String adminToken = accessToken(adminEmail, "Admin@12345");
 
 		// Admin tạo tài khoản: luôn là USER, trường "role" gửi kèm bị bỏ qua
 		String memberEmail = uniqueEmail();
 		String created = authed(post("/api/users"), adminToken, """
-				{"fullName":"Bệnh Nhân Thử","email":"%s","password":"thanhvien123","role":"ADMIN"}
+				{"fullName":"Bệnh Nhân Thử","email":"%s","password":"ThanhVien@123","role":"ADMIN"}
 				""".formatted(memberEmail))
 			.andExpect(status().isCreated())
 			.andExpect(header().exists("Location"))
@@ -266,13 +266,13 @@ class AuthFlowIntegrationTest {
 			.andExpect(jsonPath("$.content[0].email").value(memberEmail));
 
 		// Người dùng đăng nhập được
-		String memberToken = accessToken(memberEmail, "thanhvien123");
+		String memberToken = accessToken(memberEmail, "ThanhVien@123");
 
 		// Khoá tài khoản → không đăng nhập được, /me bị từ chối
 		authed(patch("/api/users/" + memberId + "/status"), adminToken, "{\"enabled\":false}")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.enabled").value(false));
-		json(post("/api/auth/login"), "{\"identifier\":\"%s\",\"password\":\"thanhvien123\"}".formatted(memberEmail))
+		json(post("/api/auth/login"), "{\"identifier\":\"%s\",\"password\":\"ThanhVien@123\"}".formatted(memberEmail))
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("ACCOUNT_DISABLED"));
 		mvc.perform(get("/api/users/me").header("Authorization", "Bearer " + memberToken))
@@ -281,7 +281,7 @@ class AuthFlowIntegrationTest {
 		// Mở khoá
 		authed(patch("/api/users/" + memberId + "/status"), adminToken, "{\"enabled\":true}")
 			.andExpect(status().isOk());
-		accessToken(memberEmail, "thanhvien123");
+		accessToken(memberEmail, "ThanhVien@123");
 
 		// Admin không tự khoá/xoá chính mình
 		authed(patch("/api/users/" + admin.getId() + "/status"), adminToken, "{\"enabled\":false}")
@@ -296,7 +296,7 @@ class AuthFlowIntegrationTest {
 		assertThat(userRepository.findById(UUID.fromString(memberId))).get()
 			.satisfies(u -> assertThat(u.getDeletedAt()).isNotNull());
 		json(post("/api/auth/register"), """
-				{"fullName":"Dùng Lại Email","email":"%s","password":"matkhau123"}
+				{"fullName":"Dùng Lại Email","email":"%s","password":"MatKhau@123"}
 				""".formatted(memberEmail)).andExpect(status().isCreated());
 	}
 
@@ -304,24 +304,25 @@ class AuthFlowIntegrationTest {
 	void userUpdatesProfileAndChangesPassword() throws Exception {
 		String email = uniqueEmail();
 		json(post("/api/auth/register"), """
-				{"fullName":"Người Dùng","email":"%s","password":"matkhau123"}
+				{"fullName":"Người Dùng","email":"%s","password":"MatKhau@123"}
 				""".formatted(email)).andExpect(status().isCreated());
-		String token = accessToken(email, "matkhau123");
+		String token = accessToken(email, "MatKhau@123");
 
 		authed(put("/api/users/me"), token, """
-				{"fullName":"Người Dùng Mới","email":"%s","birthDate":"1980-05-20","gender":"MALE","occupation":"Thợ mỏ"}
+				{"fullName":"Người Dùng Mới","email":"%s","birthDate":"1980-05-20","gender":"MALE","tieuSu":{"cviec":"Thợ mỏ"}}
 				""".formatted(email))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.fullName").value("Người Dùng Mới"))
-			.andExpect(jsonPath("$.gender").value("MALE"));
+			.andExpect(jsonPath("$.gender").value("MALE"))
+			.andExpect(jsonPath("$.tieuSu.cviec").value("Thợ mỏ"));
 
 		authed(put("/api/users/me/password"), token, """
-				{"currentPassword":"saimatkhau1","newPassword":"matkhaumoi456"}
+				{"currentPassword":"saimatkhau1","newPassword":"MatKhauMoi@456"}
 				""").andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("WRONG_PASSWORD"));
 		authed(put("/api/users/me/password"), token, """
-				{"currentPassword":"matkhau123","newPassword":"matkhaumoi456"}
+				{"currentPassword":"MatKhau@123","newPassword":"MatKhauMoi@456"}
 				""").andExpect(status().isNoContent());
-		accessToken(email, "matkhaumoi456");
+		accessToken(email, "MatKhauMoi@456");
 	}
 
 	// ---------- Tiện ích ----------

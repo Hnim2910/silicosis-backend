@@ -89,7 +89,7 @@ public class PredictionController {
 
 	@PostMapping("/{id}/retry")
 	@Operation(summary = "Chạy lại model cho lượt bị lỗi (FAILED), ghi đè kết quả trên chính lượt đó. Lượt đã thành công"
-			+ " → 409 PREDICTION_NOT_FAILED; tắt dự đoán → 503 PREDICT_DISABLED")
+			+ " → 409 PREDICTION_NOT_FAILED; tắt chẩn đoán → 503 PREDICT_DISABLED")
 	public PredictionResponse retry(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
 		return predictionService.retry(userId(jwt), isAdmin(jwt), id);
 	}

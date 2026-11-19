@@ -20,8 +20,8 @@ public record PredictionResponse(UUID id, Owner user, LocalDate examDate, Map<St
 		Boolean ketLuanCuoi, String modelName, String modelVersion, Instant createdAt, Instant updatedAt,
 		boolean experimental, String disclaimer) {
 
-	public static final String DISCLAIMER = "Công cụ hỗ trợ sàng lọc thử nghiệm, không phải chẩn đoán; "
-			+ "không thay thế đánh giá của bác sĩ.";
+	public static final String DISCLAIMER = "Công cụ hỗ trợ sàng lọc thử nghiệm; kết quả không thay thế "
+			+ "chẩn đoán và đánh giá của bác sĩ.";
 
 	public static PredictionResponse from(Prediction p, Owner owner) {
 		ImageInfo image = p.hasImage()

@@ -131,13 +131,18 @@ class PredictionApiIntegrationTest {
 		Account me = register("Người Thử Dự Đoán");
 		authed(put("/api/users/me"), me.token(), """
 				{"fullName":"Người Thử Dự Đoán","email":"%s","birthDate":"1975-04-02","gender":"MALE",
-				 "occupation":"Thợ nghiền đá","workplace":"Mỏ đá thử","exposureHistory":"Bụi đá 12 năm"}
+				 "tieuSu":{"cviec":"Thợ nghiền đá","pxuong":"Phân xưởng thử","tuoinghe":"12,5","tsnoi":""}}
 				""".formatted(me.email()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.startsWith("BN-")))
-			.andExpect(jsonPath("$.workplace").value("Mỏ đá thử"))
-			.andExpect(jsonPath("$.exposureHistory").value("Bụi đá 12 năm"))
-			.andExpect(jsonPath("$.riskFactors").doesNotExist());
+			.andExpect(jsonPath("$.tieuSu.pxuong").value("Phân xưởng thử"))
+			.andExpect(jsonPath("$.tieuSu.tuoinghe").value(12.5))
+			.andExpect(jsonPath("$.tieuSu.tsnoi").doesNotExist());
+		authed(put("/api/users/me"), me.token(), """
+				{"fullName":"Người Thử","email":"%s","tieuSu":{"hutthuoc":"Co"}}
+				""".formatted(me.email()))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.fieldErrors['tieuSu.hutthuoc']").exists());
 
 		int before = CALLS.get();
 		String body = submit(me.token(), "{\"examDate\":\"2026-11-01\",\"lamSang\":%s}".formatted(LAM_SANG),
@@ -410,7 +415,7 @@ class PredictionApiIntegrationTest {
 	private Account register(String fullName) throws Exception {
 		String email = uniqueEmail();
 		String body = authed(post("/api/auth/register"), null, """
-				{"fullName":"%s","email":"%s","password":"matkhau123"}
+				{"fullName":"%s","email":"%s","password":"MatKhau@123"}
 				""".formatted(fullName, email)).andExpect(status().isCreated()).andReturn().getResponse()
 			.getContentAsString();
 		return new Account(JsonPath.read(body, "$.accessToken"), email);
@@ -422,10 +427,10 @@ class PredictionApiIntegrationTest {
 		admin.setEmail(email);
 		admin.setFullName("Quản Trị Thử");
 		admin.setRole(Role.ADMIN);
-		admin.setPasswordHash(passwordEncoder.encode("admin12345"));
+		admin.setPasswordHash(passwordEncoder.encode("Admin@12345"));
 		userRepository.saveAndFlush(admin);
 		String body = authed(post("/api/auth/login"), null,
-				"{\"identifier\":\"%s\",\"password\":\"admin12345\"}".formatted(email))
+				"{\"identifier\":\"%s\",\"password\":\"Admin@12345\"}".formatted(email))
 			.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 		return JsonPath.read(body, "$.accessToken");
 	}

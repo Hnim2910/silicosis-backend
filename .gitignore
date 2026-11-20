@@ -47,3 +47,9 @@ predict/.pytest_cache/
 predict/ml/new_way/mo_hinh/
 predict/**/mo_hinh/
 predict/**/*.pt
+# Model PG: chỉ commit code + MO_TA_API.md, KHÔNG commit trọng số (dữ liệu riêng tư, ~23 MB) và BioViL-T (~110 MB)
+predict/ml/pg/mo_hinh_PG_web/
+predict/**/mo_hinh_PG_web/
+predict/**/*.npz
+# Bản nén trọng số (vd ml/new_way/mo_hinh.zip ~300 MB)
+predict/**/*.zip

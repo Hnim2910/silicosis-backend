@@ -35,7 +35,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-/** Lượt chẩn đoán (model New Way, thử nghiệm). Chủ lượt chẩn đoán hoặc ADMIN; người khác nhận 404. */
+/** Lượt chẩn đoán (mô hình PG, thử nghiệm). Chủ lượt chẩn đoán hoặc ADMIN; người khác nhận 404. */
 @RestController
 @RequestMapping("/api/predictions")
 @RequiredArgsConstructor

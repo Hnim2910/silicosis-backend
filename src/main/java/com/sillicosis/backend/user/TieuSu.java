@@ -38,6 +38,7 @@ public final class TieuSu {
 	private static final Map<String, Rule> RULES = new LinkedHashMap<>();
 
 	static {
+		RULES.put("tinh", new Choice(List.of("Binh Dinh", "Dong Nai", "Hai Duong", "Phu Yen", "Thai Nguyen")));
 		RULES.put("cviec", TEXT);
 		RULES.put("pxuong", TEXT);
 		RULES.put("tuoinghe", YEARS);

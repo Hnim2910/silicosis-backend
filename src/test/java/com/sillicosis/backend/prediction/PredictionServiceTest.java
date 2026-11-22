@@ -109,7 +109,9 @@ class PredictionServiceTest {
 		blank.put("ho", "  ");
 		blank.put("fvc", null);
 		assertThat(PredictionService.hasValue(blank)).isFalse();
-		assertThat(PredictionService.hasValue(Map.of("fvc", 3.2))).isTrue();
+		assertThat(PredictionService.hasValue(Map.of("fvctt", 3.2))).isTrue();
+		// Chỉ có tỉnh (bắt buộc) chưa tính là có thông tin lâm sàng
+		assertThat(PredictionService.hasValue(Map.of("tinh", "Thai Nguyen"))).isFalse();
 	}
 
 	@Test

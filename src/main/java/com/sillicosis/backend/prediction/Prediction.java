@@ -3,6 +3,7 @@ package com.sillicosis.backend.prediction;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,7 +23,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Một lượt chẩn đoán: đầu vào lâm sàng, ảnh X-quang (tuỳ chọn) và kết quả model New Way. Đầu vào không sửa được —
+ * Một lượt chẩn đoán: đầu vào lâm sàng, ảnh X-quang (tuỳ chọn) và kết quả mô hình PG. Đầu vào không sửa được —
  * đổi thông tin thì tạo lượt mới; chỉ phần kết quả được ghi lại khi thử lại một lượt FAILED. Cố ý không có toString()
  * để chỉ số lâm sàng và kết quả không lọt vào log.
  */
@@ -43,7 +44,7 @@ public class Prediction {
 	@Column(name = "exam_date", nullable = false, updatable = false)
 	private LocalDate examDate;
 
-	/** {tên_cột: giá_trị} theo predict/ml/new_way/MO_TA_API.md, đã kèm giới tính/năm sinh chép từ hồ sơ. */
+	/** {tên_cột: giá_trị} theo predict/ml/pg/MO_TA_API.md (có {@code tinh}), đã kèm giới tính/năm sinh chép từ hồ sơ. */
 	@JdbcTypeCode(SqlTypes.JSON)
 	@Column(name = "lam_sang", nullable = false, updatable = false, columnDefinition = "jsonb")
 	private Map<String, Object> lamSang = new LinkedHashMap<>();
@@ -73,32 +74,25 @@ public class Prediction {
 	@Column(name = "error_code", length = 40)
 	private String errorCode;
 
-	@Column(name = "p_lam_sang")
-	private Double pLamSang;
+	/** Xác suất ketqua = 1 (đã hiệu chỉnh). Không có ngưỡng, không có kết luận dương/âm. */
+	@Column(name = "xac_suat")
+	private Double xacSuat;
 
-	@Column(name = "nguong_lam_sang")
-	private Double nguongLamSang;
-
-	@Column(name = "bao_nguy_co_lam_sang")
-	private Boolean baoNguyCoLamSang;
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "xac_suat_theo_fold", columnDefinition = "jsonb")
+	private List<Double> xacSuatTheoFold;
 
 	@Column(name = "co_anh")
 	private Boolean coAnh;
 
-	@Column(name = "p_anh")
-	private Double pAnh;
+	/** Mức chú ý trên 6 vùng phổi (chỉ để tham khảo); null khi không có ảnh. */
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "chu_y_vung", columnDefinition = "jsonb")
+	private Map<String, Double> chuYVung;
 
-	@Column(name = "p_ghep")
-	private Double pGhep;
-
-	@Column(name = "nguong_ghep")
-	private Double nguongGhep;
-
-	@Column(name = "bao_nguy_co_ghep")
-	private Boolean baoNguyCoGhep;
-
-	@Column(name = "ket_luan_cuoi")
-	private Boolean ketLuanCuoi;
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "canh_bao", columnDefinition = "jsonb")
+	private List<String> canhBao;
 
 	@Column(name = "model_name", length = 100)
 	private String modelName;
@@ -128,15 +122,11 @@ public class Prediction {
 		PredictClient.Result r = outcome.result();
 		status = PredictionStatus.SUCCESS;
 		errorCode = null;
-		pLamSang = r.pLamSang();
-		nguongLamSang = r.nguongLamSang();
-		baoNguyCoLamSang = r.baoNguyCoLamSang();
+		xacSuat = r.xacSuat();
+		xacSuatTheoFold = List.copyOf(r.xacSuatTheoFold());
 		coAnh = r.coAnh();
-		pAnh = r.pAnh();
-		pGhep = r.pGhep();
-		nguongGhep = r.nguongGhep();
-		baoNguyCoGhep = r.baoNguyCoGhep();
-		ketLuanCuoi = r.ketLuanCuoi();
+		chuYVung = r.chuYVung() == null ? null : new LinkedHashMap<>(r.chuYVung());
+		canhBao = List.copyOf(r.canhBao());
 		modelName = outcome.modelName();
 		modelVersion = outcome.modelVersion();
 	}
@@ -144,15 +134,11 @@ public class Prediction {
 	void applyFailure(String code) {
 		status = PredictionStatus.FAILED;
 		errorCode = code;
-		pLamSang = null;
-		nguongLamSang = null;
-		baoNguyCoLamSang = null;
+		xacSuat = null;
+		xacSuatTheoFold = null;
 		coAnh = null;
-		pAnh = null;
-		pGhep = null;
-		nguongGhep = null;
-		baoNguyCoGhep = null;
-		ketLuanCuoi = null;
+		chuYVung = null;
+		canhBao = null;
 		modelName = null;
 		modelVersion = null;
 	}

@@ -63,6 +63,7 @@ class UserServiceTest {
 	void updateMeOverwritesAccountAndPatientProfileButKeepsCode() {
 		Map<String, Object> tieuSu = new LinkedHashMap<>();
 		tieuSu.put("cviec", "  Thợ nghiền đá ");
+		tieuSu.put("tinh", "Thai Nguyen");
 		tieuSu.put("tuoinghe", "12,0");
 		tieuSu.put("nampx", 3.5);
 		tieuSu.put("hutthuoc", "Khong hut thuoc");
@@ -71,7 +72,8 @@ class UserServiceTest {
 				null, LocalDate.of(1985, 6, 7), Gender.MALE, tieuSu));
 
 		assertThat(user.getFullName()).isEqualTo("Tên Mới");
-		assertThat(user.getTieuSu()).containsExactly(Map.entry("cviec", "Thợ nghiền đá"), Map.entry("tuoinghe", 12L),
+		assertThat(user.getTieuSu()).containsExactly(Map.entry("tinh", "Thai Nguyen"),
+				Map.entry("cviec", "Thợ nghiền đá"), Map.entry("tuoinghe", 12L),
 				Map.entry("nampx", 3.5), Map.entry("hutthuoc", "Khong hut thuoc"));
 		assertThat(res.code()).isEqualTo("BN-000007");
 	}
@@ -93,11 +95,12 @@ class UserServiceTest {
 		tieuSu.put("tgian1", 90);
 		tieuSu.put("hutthuoc", "Co");
 		tieuSu.put("fvc", 80);
+		tieuSu.put("tinh", "Ha Noi");
 		assertThatThrownBy(() -> userService.updateMe(user.getId(), new UpdateProfileRequest("Tên", "cu@example.com",
 				null, LocalDate.of(1850, 1, 1), null, tieuSu)))
 			.isInstanceOfSatisfying(InvalidFieldsException.class,
 					e -> assertThat(e.getFieldErrors()).containsOnlyKeys("birthDate", "tieuSu.cviec",
-							"tieuSu.tuoinghe", "tieuSu.tgian1", "tieuSu.hutthuoc", "tieuSu.fvc"));
+							"tieuSu.tuoinghe", "tieuSu.tgian1", "tieuSu.hutthuoc", "tieuSu.fvc", "tieuSu.tinh"));
 	}
 
 }

@@ -3,11 +3,9 @@
 Không sửa file trong gói: MoHinhPG tự kiểm sha256 các file trọng số theo mo_hinh_PG_web/cau_hinh_chung.json.
 Danh sách cột, kiểu và mức nhận ra đọc thẳng từ fold*/ma_hoa_lam_sang.json (hợp 5 fold).
 
-Xung đột tên module: du_doan_pg.py làm `sys.path.insert(0, DIR)` rồi `from nghe import ...`, còn ml/new_way/du_doan.py
-cũng `from nghe import ...` (một file nghe.py KHÁC) ngay trong hàm. Nếu để chung `sys.modules["nghe"]`, mô hình nạp sau
-sẽ dùng nhầm bản của mô hình nạp trước. Vì vậy PG được nạp trong một "phòng kín": tạm gỡ các khoá nghe / mo_hinh_pg /
-xu_ly_anh khỏi sys.modules, nạp, rồi trả sys.modules và sys.path về như cũ. Module PG giữ tham chiếu riêng tới hàm
-của nó, nên sau đó không còn phụ thuộc tên chung nào.
+du_doan_pg.py làm `sys.path.insert(0, DIR)` rồi `from nghe import ...` (tên module chung chung). PG được nạp trong một
+"phòng kín": tạm gỡ các khoá nghe / mo_hinh_pg / xu_ly_anh khỏi sys.modules, nạp, rồi trả sys.modules và sys.path về
+như cũ, để không đụng module trùng tên nào khác trong tiến trình. Module PG giữ tham chiếu riêng tới hàm của nó.
 """
 from __future__ import annotations
 
@@ -20,12 +18,18 @@ from pathlib import Path
 
 from PIL import Image
 
-from .new_way import MAX_TEXT, resolve_dir
-
+PREDICT_DIR = Path(__file__).resolve().parents[1]
+MAX_TEXT = 500
 MODEL_NAME = "PG ketqua: Graph Transformer 6 vùng ảnh + 6 nhóm lâm sàng + tỉnh, khoá 07/11/2026"
 WEIGHTS = "mo_hinh_PG_web"
 JOB_COLS = ("cviec", "pxuong", "cviec1", "cviec2")  # chữ nghề tự do -> mô hình tự tính *_lv
 _ISOLATE = ("nghe", "mo_hinh_pg", "xu_ly_anh")
+
+
+def resolve_dir(p: str) -> Path:
+    """Đường dẫn tương đối tính từ thư mục predict/."""
+    d = Path(p)
+    return d if d.is_absolute() else PREDICT_DIR / d
 
 
 def _load_isolated(pkg: Path):

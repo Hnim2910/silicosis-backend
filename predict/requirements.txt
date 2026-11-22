@@ -9,10 +9,13 @@ python-multipart==0.0.27
 pillow==11.1.0
 pydantic-settings==2.14.0
 numpy==2.2.2
-# New Way (ml/new_way/requirements.txt)
+# Mô hình PG (ml/pg/requirements.txt)
 pandas==2.2.3
-xgboost==3.4.1
-scikit-learn>=1.4.0
+scipy==1.16.3
+# PG: chỉ cần khi nhận ảnh
+opencv-python==4.13.0.92
+torchxrayvision==1.5.5
+rapidocr-onnxruntime==1.2.3
 
 # test
 pytest==8.3.4

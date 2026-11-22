@@ -46,7 +46,7 @@ import tools.jackson.databind.json.JsonMapper;
 @RequiredArgsConstructor
 public class PredictionService {
 
-	/** Số cột tối đa của {@code lamSang} (model hiện có khoảng 60 cột đầu vào). */
+	/** Số cột tối đa của {@code lamSang} (mô hình PG có khoảng 120 cột đầu vào). */
 	static final int MAX_FIELDS = 200;
 
 	private final PredictionRepository predictionRepository;
@@ -243,7 +243,8 @@ public class PredictionService {
 				}
 			}
 		}
-		else if (raw != null) {
+		else {
+			// Không gửi lamSang (null) vẫn phải kiểm: mô hình PG bắt buộc có tỉnh.
 			errors.putAll(clinicalValidator.validate(raw));
 		}
 		if (!errors.isEmpty()) {
@@ -288,9 +289,10 @@ public class PredictionService {
 		return v == null || v instanceof String s && s.isBlank();
 	}
 
-	/** Có ít nhất một giá trị không rỗng. */
+	/** Có ít nhất một giá trị không rỗng, không tính {@code tinh} (luôn bắt buộc nên không phải thông tin lâm sàng). */
 	static boolean hasValue(Map<String, Object> lamSang) {
-		return lamSang.values().stream().anyMatch(v -> v != null && !(v instanceof String s && s.isBlank()));
+		return lamSang.entrySet().stream().anyMatch(e -> !ClinicalValidator.TINH_KEY.equals(e.getKey())
+				&& e.getValue() != null && !(e.getValue() instanceof String s && s.isBlank()));
 	}
 
 	private Prediction authorized(UUID actorId, boolean admin, UUID id) {

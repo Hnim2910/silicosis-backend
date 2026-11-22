@@ -1,13 +1,11 @@
-"""Test mô hình PG (POST /predict/pg). Chỉ dùng bản ghi giả FAKE_PG và ảnh giả tạo bằng PIL."""
+"""Test service PG (POST /predict/pg, /health, /schema). Chỉ dùng bản ghi giả FAKE_PG và ảnh giả tạo bằng PIL."""
 import io
 import json
-import sys
-from pathlib import Path
 
 import pytest
 from PIL import Image
 
-from conftest import FAKE_PG, FAKE_RECORD, fake_xray, needs_model, needs_pg, needs_pg_image
+from conftest import FAKE_PG, fake_xray, needs_pg, needs_pg_image
 
 KEYS = {"nhan", "xac_suat", "xac_suat_theo_fold", "co_anh", "tinh", "chu_y_vung", "qa_anh", "canh_bao",
         "canh_bao_dau_vao", "disclaimer", "experimental", "mo_hinh", "model_name", "model_version"}
@@ -24,10 +22,9 @@ def _codes(r):
 
 
 @needs_pg
-def test_health_pg(client_pg_only):
-    b = client_pg_only.get("/health/pg").json()
-    assert b["model_loaded"] is True and len(b["model_version"]) == 12
-    assert client_pg_only.get("/health").json()["model_loaded"] is False  # New Way không nạp, PG vẫn chạy
+def test_health(client_pg_only):
+    b = client_pg_only.get("/health").json()
+    assert b["model_loaded"] is True and len(b["model_version"]) == 12 and b["model_name"].startswith("PG ketqua")
 
 
 @needs_pg
@@ -109,8 +106,8 @@ def test_pg_unrecognized_category_warns(client_pg_only):
 
 
 @needs_pg
-def test_schema_pg(client_pg_only):
-    b = client_pg_only.get("/schema/pg").json()
+def test_schema(client_pg_only):
+    b = client_pg_only.get("/schema").json()
     assert b["required"] == ["tinh"] and len(b["tinh"]) == 5
     assert b["kind"]["namsinh"] == "so" and b["kind"]["cviec"] == "chu" and b["levels"]["gioitinh"] == ["Nam", "Nu"]
     assert "bmi" in b["derived"] and "bmi" not in b["kind"] and "tinh" not in b["kind"]
@@ -124,7 +121,7 @@ def test_pg_with_image(client_pg_only):
     assert set(b) == KEYS and b["co_anh"] is True and 0 <= b["xac_suat"] <= 1
     assert set(b["chu_y_vung"]) == REG
     assert {"dao_am", "du_phoi", "vung_rong"} <= set(b["qa_anh"])
-    assert client_pg_only.get("/health/pg").json()["image_model_loaded"] is True
+    assert client_pg_only.get("/health").json()["image_model_loaded"] is True
 
 
 @needs_pg_image
@@ -179,18 +176,24 @@ def test_pg_bad_json_422(client_pg_only):
 def test_pg_not_loaded_503(client_no_model):
     r = _pg(client_no_model, FAKE_PG)
     assert r.status_code == 503 and r.json()["code"] == "MODEL_NOT_LOADED"
-    assert client_no_model.get("/health/pg").json()["model_loaded"] is False
+    assert client_no_model.get("/health").json()["model_loaded"] is False
 
 
-@needs_model
-@needs_pg
-def test_new_way_and_pg_side_by_side(client):
-    """Hai gói có hai file nghe.py khác nhau: mỗi mô hình phải dùng đúng bản của mình, New Way không đổi điểm."""
-    before = client.post("/predict/clinical", json=FAKE_RECORD).json()
-    assert _pg(client, FAKE_PG).status_code == 200
-    after = client.post("/predict/clinical", json=FAKE_RECORD).json()
-    assert before == after
-    pg_mod = client.app.state.pg.mod
+def test_schema_not_loaded_503(client_no_model):
+    r = client_no_model.get("/schema")
+    assert r.status_code == 503 and r.json()["code"] == "MODEL_NOT_LOADED"
+
+
+@pytest.mark.parametrize("path", ["/predict", "/predict/clinical", "/predict/clinical-image", "/health/pg", "/schema/pg"])
+def test_removed_routes_410(client_no_model, path):
+    r = client_no_model.post(path, json={"tinh": "Thai Nguyen"})
+    assert r.status_code == 410 and r.json()["code"] == "ENDPOINT_REMOVED"
+
+
+def test_pg_isolated_import(client_pg_only):
+    """Gói PG nạp trong phòng kín: không để lại tên module chung trong sys.modules."""
+    import sys
+    from pathlib import Path
+    pg_mod = client_pg_only.app.state.pg.mod
     assert Path(pg_mod.them_cap_nghe.__code__.co_filename).parent.name == "pg"
-    assert Path(sys.modules["nghe"].__file__).parent.name == "new_way"  # bản New Way nạp lười, không bị PG chiếm
-    assert "mo_hinh_pg" not in sys.modules and "xu_ly_anh" not in sys.modules
+    assert not {"nghe", "mo_hinh_pg", "xu_ly_anh"} & set(sys.modules)

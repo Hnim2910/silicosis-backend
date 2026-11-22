@@ -70,31 +70,36 @@ class PredictionApiIntegrationTest {
 
 	private static final Path IMAGE_DIR = temporaryImageDirectory();
 
-	/** Dict giả cùng dạng MoHinh.du_doan() (predict/ml/new_way/MO_TA_API.md). */
+	/** Body giả cùng dạng PGResult của POST /predict/pg (predict/app/schemas.py), số liệu tự đặt. */
 	private static final String OK_IMAGE = """
-			{"nhan":"ketqua","p_lam_sang":0.2,"nguong_lam_sang":0.051546,"bao_nguy_co_lam_sang":true,"co_anh":true,
-			 "p_anh":0.6,"p_ghep":0.55,"nguong_ghep":0.207134,"bao_nguy_co_ghep":true,"ket_luan_cuoi":true}
+			{"nhan":"ketqua","xac_suat":0.55,"xac_suat_theo_fold":[0.5,0.6,0.55,0.52,0.58],"co_anh":true,
+			 "tinh":"Thai Nguyen","chu_y_vung":{"RU":0.2,"RM":0.15,"RL":0.1,"LU":0.25,"LM":0.18,"LL":0.12},
+			 "qa_anh":{},"canh_bao":["Cảnh báo thử"],"canh_bao_dau_vao":[],"experimental":true,
+			 "disclaimer":"x","model_name":"PG ketqua","model_version":"abc123def456"}
 			""";
 
 	private static final String OK_CLINICAL = """
-			{"nhan":"ketqua","p_lam_sang":0.03,"nguong_lam_sang":0.051546,"bao_nguy_co_lam_sang":false,"co_anh":false,
-			 "p_anh":null,"p_ghep":null,"nguong_ghep":null,"bao_nguy_co_ghep":null,"ket_luan_cuoi":false}
+			{"nhan":"ketqua","xac_suat":0.03,"xac_suat_theo_fold":[0.02,0.04,0.03,0.03,0.03],"co_anh":false,
+			 "tinh":"Thai Nguyen","chu_y_vung":null,"qa_anh":null,"canh_bao":[],"canh_bao_dau_vao":[],
+			 "experimental":true,"disclaimer":"x","model_name":"PG ketqua","model_version":"abc123def456"}
 			""";
 
 	private static final String SCHEMA = """
-			{"kind":{"ho":"muc","fvc":"so","cviec":"chu","gioitinh":"muc","namsinh":"so"},
-			 "levels":{"ho":["Co","Khong"],"gioitinh":["Nam","Nu"]}}
+			{"required":["tinh"],"tinh":["Binh Dinh","Dong Nai","Hai Duong","Phu Yen","Thai Nguyen"],
+			 "kind":{"ho":"muc","fvctt":"so","cviec":"chu","gioitinh":"muc","namsinh":"so"},
+			 "levels":{"ho":["Co","Khong"],"gioitinh":["Nam","Nu"]},
+			 "derived":["bmi","fev1_fvc","cviec_lv","pxuong_lv","cviec1_lv","cviec2_lv"]}
 			""";
 
 	private static final String LAM_SANG = """
-			{"ho":"Co","fvc":"3,2","cviec":"cong nhan"}""";
+			{"tinh":"Thai Nguyen","ho":"Co","fvctt":"3,2","cviec":"cong nhan"}""";
 
 	/** Hành vi của server giả: ok, slow, error500, reject400, reject422, garbage, noversion. */
 	private static final AtomicReference<String> MODE = new AtomicReference<>("ok");
 
 	private static final AtomicInteger CALLS = new AtomicInteger();
 
-	/** Yêu cầu đúng dạng: multipart có "lam_sang" + "file" (filename, Content-Type ảnh), hoặc JSON object. */
+	/** Yêu cầu đúng dạng: multipart có "lam_sang", kèm "file" (filename, Content-Type ảnh) khi có ảnh. */
 	private static final AtomicBoolean WELL_FORMED = new AtomicBoolean();
 
 	private static final AtomicReference<String> LAST_PATH = new AtomicReference<>();
@@ -156,12 +161,17 @@ class PredictionApiIntegrationTest {
 			.andExpect(jsonPath("$.image.contentType").value("image/png"))
 			.andExpect(jsonPath("$.image.width").value(300))
 			.andExpect(jsonPath("$.status").value("SUCCESS"))
+			.andExpect(jsonPath("$.lamSang.tinh").value("Thai Nguyen"))
 			.andExpect(jsonPath("$.coAnh").value(true))
-			.andExpect(jsonPath("$.pLamSang").value(0.2))
-			.andExpect(jsonPath("$.pAnh").value(0.6))
-			.andExpect(jsonPath("$.pGhep").value(0.55))
-			.andExpect(jsonPath("$.nguongGhep").value(0.207134))
-			.andExpect(jsonPath("$.ketLuanCuoi").value(true))
+			.andExpect(jsonPath("$.xacSuat").value(0.55))
+			.andExpect(jsonPath("$.xacSuatTheoFold.length()").value(5))
+			.andExpect(jsonPath("$.chuYVung.LU").value(0.25))
+			.andExpect(jsonPath("$.canhBao[0]").value("Cảnh báo thử"))
+			// PG không có ngưỡng, không có kết luận dương/âm
+			.andExpect(jsonPath("$.pLamSang").doesNotExist())
+			.andExpect(jsonPath("$.ketLuanCuoi").doesNotExist())
+			.andExpect(jsonPath("$.nguongGhep").doesNotExist())
+			.andExpect(jsonPath("$.modelName").value("PG ketqua"))
 			.andExpect(jsonPath("$.modelVersion").value("abc123def456"))
 			.andExpect(jsonPath("$.experimental").value(true))
 			.andExpect(jsonPath("$.disclaimer").isNotEmpty())
@@ -170,9 +180,10 @@ class PredictionApiIntegrationTest {
 			.andReturn().getResponse().getContentAsString();
 		String id = JsonPath.read(body, "$.id");
 		assertThat(CALLS.get()).isEqualTo(before + 1);
-		assertThat(LAST_PATH.get()).isEqualTo("/predict/clinical-image");
+		assertThat(LAST_PATH.get()).isEqualTo("/predict/pg");
 		assertThat(WELL_FORMED).isTrue();
-		assertThat(LAST_BODY.get()).contains("\"gioitinh\":\"Nam\"").contains("\"namsinh\":1975");
+		assertThat(LAST_BODY.get()).contains("\"gioitinh\":\"Nam\"").contains("\"namsinh\":1975")
+			.contains("\"tinh\":\"Thai Nguyen\"");
 
 		authed(get("/api/predictions/" + id), me.token(), null)
 			.andExpect(status().isOk())
@@ -206,34 +217,57 @@ class PredictionApiIntegrationTest {
 	}
 
 	@Test
-	void clinicalOnlyUsesClinicalEndpointAndHasNoImage() throws Exception {
+	void clinicalOnlySendsNoFilePartAndHasNoImage() throws Exception {
 		String token = register("Người Thử Lâm Sàng").token();
 		String id = JsonPath.read(submit(token, "{\"lamSang\":%s}".formatted(LAM_SANG), null)
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.status").value("SUCCESS"))
 			.andExpect(jsonPath("$.coAnh").value(false))
-			.andExpect(jsonPath("$.pLamSang").value(0.03))
-			.andExpect(jsonPath("$.pGhep").doesNotExist())
+			.andExpect(jsonPath("$.xacSuat").value(0.03))
+			.andExpect(jsonPath("$.chuYVung").doesNotExist())
+			.andExpect(jsonPath("$.canhBao").isEmpty())
 			.andExpect(jsonPath("$.image").doesNotExist())
-			.andExpect(jsonPath("$.ketLuanCuoi").value(false))
 			.andExpect(jsonPath("$.examDate").isNotEmpty())
 			// Hồ sơ chưa có giới tính/ngày sinh → không tự thêm
 			.andExpect(jsonPath("$.lamSang.gioitinh").doesNotExist())
 			.andReturn().getResponse().getContentAsString(), "$.id");
-		assertThat(LAST_PATH.get()).isEqualTo("/predict/clinical");
+		assertThat(LAST_PATH.get()).isEqualTo("/predict/pg");
 		assertThat(WELL_FORMED).isTrue();
+		assertThat(LAST_BODY.get()).doesNotContain("name=\"file\"");
 		authed(get("/api/predictions/" + id + "/image"), token, null).andExpect(status().isNotFound());
 	}
 
 	@Test
-	void imageOnlyIsAccepted() throws Exception {
+	void imageWithOnlyTinhIsAccepted() throws Exception {
 		String token = register("Người Thử Chỉ Ảnh").token();
-		submit(token, null, png(300, 300))
+		submit(token, "{\"lamSang\":{\"tinh\":\"Hai Duong\"}}", png(300, 300))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.status").value("SUCCESS"))
 			.andExpect(jsonPath("$.coAnh").value(true))
-			.andExpect(jsonPath("$.lamSang").isEmpty());
-		assertThat(LAST_PATH.get()).isEqualTo("/predict/clinical-image");
+			.andExpect(jsonPath("$.lamSang.tinh").value("Hai Duong"));
+		assertThat(LAST_PATH.get()).isEqualTo("/predict/pg");
+		assertThat(WELL_FORMED).isTrue();
+	}
+
+	@Test
+	void tinhIsRequiredAndMustBeOneOfFive() throws Exception {
+		String token = register("Người Thử Tỉnh").token();
+		int before = CALLS.get();
+		// Ảnh mà không gửi lâm sàng → thiếu tỉnh
+		submit(token, null, png(300, 300))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+			.andExpect(jsonPath("$.fieldErrors['lamSang.tinh']").exists());
+		submit(token, "{\"lamSang\":{\"ho\":\"Co\"}}", null)
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.fieldErrors['lamSang.tinh']").exists());
+		submit(token, "{\"lamSang\":{\"tinh\":\"Ha Noi\",\"ho\":\"Co\"}}", null)
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.fieldErrors['lamSang.tinh']").exists());
+		submit(token, "{\"lamSang\":{\"tinh\":\"Thái Nguyên\",\"ho\":\"Co\"}}", null)
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.fieldErrors['lamSang.tinh']").exists());
+		assertThat(CALLS.get()).isEqualTo(before);
 	}
 
 	@Test
@@ -241,12 +275,18 @@ class PredictionApiIntegrationTest {
 		String token = register("Người Thử Mã Sai").token();
 		int before = CALLS.get();
 
-		submit(token, "{\"lamSang\":{\"ho\":\"Có\",\"fvc\":\"abc\",\"tinh\":\"x\"}}", null)
+		submit(token, "{\"lamSang\":{\"ho\":\"Có\",\"fvctt\":\"abc\",\"tinh\":\"x\"}}", null)
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.fieldErrors['lamSang.ho']").exists())
-			.andExpect(jsonPath("$.fieldErrors['lamSang.fvc']").exists())
+			.andExpect(jsonPath("$.fieldErrors['lamSang.fvctt']").exists())
 			.andExpect(jsonPath("$.fieldErrors['lamSang.tinh']").exists());
-		submit(token, "{\"lamSang\":{\"ho\":{\"x\":1}}}", null)
+		// Trường cũ của New Way (fvc) và trường mô hình tự tính (bmi) → bị từ chối
+		submit(token, "{\"lamSang\":{\"tinh\":\"Phu Yen\",\"fvc\":\"3\",\"bmi\":22}}", null)
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.fieldErrors['lamSang.fvc']").value("Trường không có trong mô hình."))
+			.andExpect(jsonPath("$.fieldErrors['lamSang.bmi']").exists())
+			.andExpect(jsonPath("$.fieldErrors['lamSang.tinh']").doesNotExist());
+		submit(token, "{\"lamSang\":{\"tinh\":\"Phu Yen\",\"ho\":{\"x\":1}}}", null)
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.fieldErrors['lamSang.ho']").exists());
 		submit(token, "{\"lamSang\":[1,2]}", null)
@@ -255,12 +295,12 @@ class PredictionApiIntegrationTest {
 		submit(token, "{\"examDate\":\"2999-01-01\",\"lamSang\":%s}".formatted(LAM_SANG), null)
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.fieldErrors.examDate").exists());
-		// Không có ảnh lẫn lâm sàng
-		submit(token, "{\"lamSang\":{\"ho\":\"\"}}", null)
+		// Không có ảnh, lâm sàng chỉ có tỉnh
+		submit(token, "{\"lamSang\":{\"tinh\":\"Phu Yen\",\"ho\":\"\"}}", null)
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("EMPTY_SUBMISSION"));
 		// Tệp không phải ảnh
-		submit(token, null, "not an image".getBytes(StandardCharsets.UTF_8))
+		submit(token, "{\"lamSang\":{\"tinh\":\"Phu Yen\"}}", "not an image".getBytes(StandardCharsets.UTF_8))
 			.andExpect(status().is4xxClientError());
 
 		assertThat(CALLS.get()).isEqualTo(before);
@@ -272,11 +312,12 @@ class PredictionApiIntegrationTest {
 		String token = register("Người Thử Lỗi").token();
 
 		MODE.set("error500");
-		String id = JsonPath.read(submit(token, null, png(300, 300))
+		String id = JsonPath.read(submit(token, "{\"lamSang\":%s}".formatted(LAM_SANG), png(300, 300))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.status").value("FAILED"))
 			.andExpect(jsonPath("$.errorCode").value("PREDICT_UNAVAILABLE"))
-			.andExpect(jsonPath("$.pLamSang").doesNotExist())
+			.andExpect(jsonPath("$.xacSuat").doesNotExist())
+			.andExpect(jsonPath("$.canhBao").doesNotExist())
 			.andExpect(jsonPath("$.image.contentType").value("image/png"))
 			.andReturn().getResponse().getContentAsString(), "$.id");
 
@@ -293,8 +334,10 @@ class PredictionApiIntegrationTest {
 			.andExpect(jsonPath("$.id").value(id))
 			.andExpect(jsonPath("$.status").value("SUCCESS"))
 			.andExpect(jsonPath("$.errorCode").doesNotExist())
-			.andExpect(jsonPath("$.pGhep").value(0.55));
-		assertThat(LAST_PATH.get()).isEqualTo("/predict/clinical-image");
+			.andExpect(jsonPath("$.xacSuat").value(0.55))
+			.andExpect(jsonPath("$.coAnh").value(true));
+		assertThat(LAST_PATH.get()).isEqualTo("/predict/pg");
+		assertThat(WELL_FORMED).isTrue();
 		authed(get("/api/predictions"), token, null).andExpect(jsonPath("$.totalElements").value(1));
 	}
 
@@ -348,7 +391,7 @@ class PredictionApiIntegrationTest {
 		try {
 			HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
 			server.setExecutor(Executors.newCachedThreadPool());
-			server.createContext("/predict/", PredictionApiIntegrationTest::handle);
+			server.createContext("/predict/pg", PredictionApiIntegrationTest::handle);
 			server.createContext("/schema", ex -> respond(ex, 200, SCHEMA, true));
 			server.start();
 			return server;
@@ -365,13 +408,13 @@ class PredictionApiIntegrationTest {
 		String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
 		LAST_BODY.set(request);
 		String type = exchange.getRequestHeaders().getFirst("Content-Type");
-		boolean image = "/predict/clinical-image".equals(path);
+		boolean image = request.contains("name=\"file\"");
 		// uvicorn từ chối yêu cầu có "Upgrade: h2c" (400), server JDK thì không: kiểm tra ở đây.
-		WELL_FORMED.set(exchange.getRequestHeaders().getFirst("Upgrade") == null && type != null && (image
-				? type.startsWith("multipart/form-data") && request.contains("name=\"lam_sang\"")
-						&& request.contains("name=\"file\"; filename=\"image.png\"")
-						&& request.contains("Content-Type: image/png")
-				: type.startsWith("application/json") && request.startsWith("{")));
+		WELL_FORMED.set(exchange.getRequestHeaders().getFirst("Upgrade") == null && type != null
+				&& "POST".equals(exchange.getRequestMethod()) && type.startsWith("multipart/form-data")
+				&& request.contains("name=\"lam_sang\"")
+				&& (!image || request.contains("name=\"file\"; filename=\"image.png\"")
+						&& request.contains("Content-Type: image/png")));
 		String ok = image ? OK_IMAGE : OK_CLINICAL;
 		switch (MODE.get()) {
 			case "slow" -> {
@@ -386,7 +429,7 @@ class PredictionApiIntegrationTest {
 			case "error500" -> respond(exchange, 503, "{\"code\":\"MODEL_NOT_LOADED\",\"message\":\"x\"}", true);
 			case "reject400" -> respond(exchange, 400, "{\"code\":\"INVALID_IMAGE\",\"message\":\"x\"}", true);
 			case "reject422" -> respond(exchange, 422, "{\"code\":\"INVALID_INPUT\",\"message\":\"x\"}", true);
-			case "garbage" -> respond(exchange, 200, "{\"p_lam_sang\":1.7,\"co_anh\":true}", true);
+			case "garbage" -> respond(exchange, 200, "{\"xac_suat\":1.7,\"co_anh\":true}", true);
 			case "noversion" -> respond(exchange, 200, ok, false);
 			default -> respond(exchange, 200, ok, true);
 		}

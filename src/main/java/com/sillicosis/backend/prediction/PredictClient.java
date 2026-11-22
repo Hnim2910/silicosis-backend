@@ -29,9 +29,9 @@ import com.sillicosis.backend.config.AppProperties;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Gọi service FastAPI New Way (thư mục predict/): {@code POST /predict/clinical} (chỉ lâm sàng, JSON) hoặc
- * {@code POST /predict/clinical-image} (multipart: phần {@code lam_sang} là chuỗi JSON + phần {@code file}). Lỗi nào
- * cũng thành {@link PredictException}.
+ * Gọi service FastAPI của mô hình PG (thư mục predict/): {@code POST /predict/pg}, multipart gồm phần
+ * {@code lam_sang} (chuỗi JSON, bắt buộc có {@code tinh}) và phần {@code file} (ảnh, tuỳ chọn). PG chỉ trả xác suất,
+ * không có ngưỡng hay kết luận dương/âm. Lỗi nào cũng thành {@link PredictException}.
  */
 @Component
 public class PredictClient {
@@ -53,21 +53,19 @@ public class PredictClient {
 		this.restClient = RestClient.builder().baseUrl(p.baseUrl()).requestFactory(factory).build();
 	}
 
-	/** {@code image} null = chỉ lâm sàng. {@code lamSang} là {tên_cột: giá_trị} theo MO_TA_API.md (mã không dấu). */
+	/**
+	 * {@code image} null = chỉ lâm sàng. {@code lamSang} là {tên_cột: giá_trị} theo predict/ml/pg/MO_TA_API.md (mã không
+	 * dấu).
+	 */
 	public Outcome predict(Map<String, Object> lamSang, byte[] image, String contentType) {
 		Result result;
 		HttpHeaders headers;
 		try {
-			RestClient.RequestBodySpec req;
-			if (image == null) {
-				req = restClient.post().uri("/predict/clinical").contentType(MediaType.APPLICATION_JSON);
-				req.body(jsonMapper.writeValueAsString(lamSang));
-			}
-			else {
-				req = restClient.post().uri("/predict/clinical-image").contentType(MediaType.MULTIPART_FORM_DATA);
-				req.body(multipart(lamSang, image, contentType));
-			}
-			var entity = req.retrieve().onStatus(HttpStatusCode::isError, (rq, res) -> {
+			var entity = restClient.post()
+				.uri("/predict/pg")
+				.contentType(MediaType.MULTIPART_FORM_DATA)
+				.body(multipart(lamSang, image, contentType))
+				.retrieve().onStatus(HttpStatusCode::isError, (rq, res) -> {
 				throw new PredictException(errorCode(res.getStatusCode()));
 			}).toEntity(Result.class);
 			result = entity.getBody();
@@ -85,7 +83,7 @@ public class PredictClient {
 				|| version.length() > 64) {
 			throw new PredictException(PredictException.BAD_RESPONSE);
 		}
-		return new Outcome(result, name == null || name.isBlank() ? "New Way ketqua" : truncate(name, 100), version);
+		return new Outcome(result, name == null || name.isBlank() ? "PG ketqua" : truncate(name, 100), version);
 	}
 
 	private static String truncate(String s, int max) {
@@ -102,8 +100,8 @@ public class PredictClient {
 	}
 
 	/**
-	 * Danh sách cột và mức hợp lệ ({@code GET /schema}): {@code kind} {cột: so|chu|muc}, {@code levels} {cột: [mức]}.
-	 * Rỗng nếu service chưa chạy.
+	 * Danh sách cột của mô hình PG ({@code GET /schema}): {@code kind} {cột: so|chu|muc}, {@code levels} {cột: [mức]},
+	 * {@code tinh} các tỉnh hợp lệ, {@code derived} các cột mô hình tự tính. Rỗng nếu service chưa chạy.
 	 */
 	public Optional<Schema> schema() {
 		try {
@@ -117,12 +115,15 @@ public class PredictClient {
 	private MultiValueMap<String, Object> multipart(Map<String, Object> lamSang, byte[] image, String contentType) {
 		HttpHeaders jsonHeaders = new HttpHeaders();
 		jsonHeaders.setContentType(new MediaType(MediaType.TEXT_PLAIN, java.nio.charset.StandardCharsets.UTF_8));
+		MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+		parts.add("lam_sang", new HttpEntity<>(jsonMapper.writeValueAsString(lamSang), jsonHeaders));
+		if (image == null) {
+			return parts;
+		}
 		HttpHeaders partHeaders = new HttpHeaders();
 		partHeaders.setContentType(MediaType.parseMediaType(contentType));
 		// Tên tệp cố định: FastAPI cần filename để nhận là UploadFile; không gửi tên gốc.
 		String filename = MediaType.IMAGE_PNG_VALUE.equals(contentType) ? "image.png" : "image.jpg";
-		MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
-		parts.add("lam_sang", new HttpEntity<>(jsonMapper.writeValueAsString(lamSang), jsonHeaders));
 		parts.add("file", new HttpEntity<>(new ByteArrayResource(image) {
 			@Override
 			public String getFilename() {
@@ -155,31 +156,28 @@ public class PredictClient {
 		return false;
 	}
 
-	/** Dict trả về từ MoHinh.du_doan() (tên trường snake_case, xem predict/ml/new_way/MO_TA_API.md). */
+	/**
+	 * Phần kết quả cần lưu từ {@code PGResult} (tên trường snake_case, xem predict/ml/pg/MO_TA_API.md). Không có ngưỡng,
+	 * không có kết luận dương/âm.
+	 */
 	@JsonIgnoreProperties(ignoreUnknown = true)
-	public record Result(String nhan, @JsonProperty("p_lam_sang") Double pLamSang,
-			@JsonProperty("nguong_lam_sang") Double nguongLamSang,
-			@JsonProperty("bao_nguy_co_lam_sang") Boolean baoNguyCoLamSang, @JsonProperty("co_anh") Boolean coAnh,
-			@JsonProperty("p_anh") Double pAnh, @JsonProperty("p_ghep") Double pGhep,
-			@JsonProperty("nguong_ghep") Double nguongGhep, @JsonProperty("bao_nguy_co_ghep") Boolean baoNguyCoGhep,
-			@JsonProperty("ket_luan_cuoi") Boolean ketLuanCuoi) {
+	public record Result(String nhan, @JsonProperty("xac_suat") Double xacSuat,
+			@JsonProperty("xac_suat_theo_fold") List<Double> xacSuatTheoFold, @JsonProperty("co_anh") Boolean coAnh,
+			String tinh, @JsonProperty("chu_y_vung") Map<String, Double> chuYVung,
+			@JsonProperty("canh_bao") List<String> canhBao) {
+
+		private static final int MAX_LIST = 50;
+
+		private static final int MAX_TEXT = 1000;
 
 		boolean isValid(boolean withImage) {
-			boolean base = unit(pLamSang) && unit(nguongLamSang) && baoNguyCoLamSang != null && ketLuanCuoi != null
-					&& coAnh != null && coAnh == withImage;
-			if (!base) {
-				return false;
-			}
-			return !withImage || (unit(pAnh) && unit(pGhep) && unit(nguongGhep) && baoNguyCoGhep != null);
-		}
-
-		/** Điểm dùng cho kết luận cuối: điểm ghép nếu có ảnh, ngược lại điểm lâm sàng. */
-		public double finalProbability() {
-			return Boolean.TRUE.equals(coAnh) ? pGhep : pLamSang;
-		}
-
-		public double finalThreshold() {
-			return Boolean.TRUE.equals(coAnh) ? nguongGhep : nguongLamSang;
+			return unit(xacSuat) && coAnh != null && coAnh == withImage && xacSuatTheoFold != null
+					&& !xacSuatTheoFold.isEmpty() && xacSuatTheoFold.size() <= MAX_LIST
+					&& xacSuatTheoFold.stream().allMatch(Result::unit)
+					&& (chuYVung == null || withImage && chuYVung.size() <= MAX_LIST
+							&& chuYVung.values().stream().allMatch(Result::unit))
+					&& canhBao != null && canhBao.size() <= MAX_LIST
+					&& canhBao.stream().allMatch(c -> c != null && c.length() <= MAX_TEXT);
 		}
 
 		private static boolean unit(Double v) {
@@ -194,7 +192,8 @@ public class PredictClient {
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
-	public record Schema(Map<String, String> kind, Map<String, List<String>> levels) {
+	public record Schema(Map<String, String> kind, Map<String, List<String>> levels, List<String> tinh,
+			List<String> derived) {
 	}
 
 }

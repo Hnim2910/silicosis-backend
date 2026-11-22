@@ -23,7 +23,7 @@ Mục lục:
 **SilicoCare** (đồ án tốt nghiệp) là hệ thống **hỗ trợ sàng lọc** bệnh này:
 
 - Người dùng nhập **thông tin lâm sàng** (tuổi nghề, hút thuốc, ho, khó thở, chức năng hô hấp…) và có thể kèm **phim X-quang ngực thẳng**.
-- **Mô hình AI** ("New Way") ước lượng nguy cơ: XGBoost cho phần lâm sàng; nếu có phim thì ghép thêm BioViL-T cho phần ảnh.
+- **Mô hình AI** ("PG", Graph Transformer) cho ra **xác suất** từ lâm sàng (bắt buộc chọn 1 trong 5 tỉnh), có phim thì dùng thêm 6 vùng phổi trên ảnh. Chưa có ngưỡng được duyệt, nên hệ thống không đưa kết luận.
 - Mỗi lần gửi được lưu thành một **lượt chẩn đoán** để theo dõi theo thời gian và xuất báo cáo PDF.
 
 > ⚠️ **Công cụ sàng lọc thử nghiệm, không thay thế chẩn đoán của bác sĩ.** Cách diễn đạt nhãn kết quả đang được nhóm bàn lại (xem [mục 9](#9-việc-đang-chờ-quyết-định)). Trong lúc chờ, giữ nguyên nhãn hiện tại và không dùng chữ "dương tính" / "âm tính".
@@ -124,7 +124,7 @@ Lưu ý:
 - **Dữ liệu:**
   - tài khoản: họ tên, email, SĐT; mã bệnh nhân (chỉ đọc);
   - ngày sinh, giới tính;
-  - **tiểu sử** (`users.tieu_su`, JSONB): đúng các trường của form lâm sàng thuộc nhóm "Nghề nghiệp & phơi nhiễm" và "Hút thuốc & tiền sử", cùng mã cột/mã giá trị (`cviec`, `pxuong`, `tuoinghe`, …, `hutthuoc`, `tiensuhh`, `tsnoi`, `tsngoai`). Backend kiểm tra theo `user/TieuSu.java` (khoảng số, mã lựa chọn, ≤ 500 ký tự).
+  - **tiểu sử** (`users.tieu_su`, JSONB): tỉnh nơi làm việc (`tinh`: `Binh Dinh`, `Dong Nai`, `Hai Duong`, `Phu Yen`, `Thai Nguyen`; không bắt buộc trong hồ sơ, bắt buộc khi chẩn đoán) và đúng các trường của form lâm sàng thuộc nhóm "Nghề nghiệp & phơi nhiễm" và "Hút thuốc & tiền sử", cùng mã cột/mã giá trị (`cviec`, `pxuong`, `tuoinghe`, …, `hutthuoc`, `tiensuhh`, `tsnoi`, `tsngoai`). Cột JSONB nên thêm `tinh` không cần migration. Backend kiểm tra theo `user/TieuSu.java` (khoảng số, mã lựa chọn, ≤ 500 ký tự).
 - **Mục đích:** không phải nhập lại thông tin cố định mỗi lần chẩn đoán.
   - Lần đầu đăng nhập, khi hồ sơ chưa có giới tính, ngày sinh và tiểu sử, trang Tổng quan mở popup điền tiểu sử (có thể "Để sau").
   - Form chẩn đoán điền sẵn tiểu sử; năm sinh lấy từ ngày sinh (chỉ đọc).
@@ -153,30 +153,16 @@ Lưu ý:
   - **Xoá:** xoá mềm.
 - **Ví dụ:** tháng 3, anh Nam khám định kỳ, nhập "ho có, khó thở khi gắng sức, FVC 72,5%" kèm phim và được lượt chẩn đoán #1. Tháng 9 khám lại thì gửi lượt #2. Trang Lịch sử cho thấy cả hai.
 
-### 4.6. Kết quả của model (New Way)
-- **Chỉ lâm sàng:**
-  - XGBoost cho ra `p_lam_sang`;
-  - `p_lam_sang` ≥ ngưỡng `0,051546` thì báo có nguy cơ.
-- **Có phim:**
-  - BioViL-T cho ra `p_anh`, ghép với lâm sàng thành `p_ghep`;
-  - `p_ghep` ≥ ngưỡng `0,207134` thì báo có nguy cơ;
-  - khi có phim, kết luận cuối luôn theo `p_ghep`.
-- **Vì sao ngưỡng thấp, không phải 0,5:**
-  - Chỉ khoảng 7–8% số người trong dữ liệu là dương.
-  - Ngưỡng được chọn để bắt được ≥ 80% số ca bệnh thật (ưu tiên không bỏ sót).
-  - Hai luồng học trên hai nhóm người khác nhau, nên **không so sánh trực tiếp xác suất của hai luồng**.
-- **Hiển thị trên web** (nhóm đã chốt): chỉ 3 nhãn **Có nguy cơ / Nguy cơ thấp / Bị lỗi**, theo `ket_luan_cuoi`.
-  - Có phim: thêm % điểm ghép.
-  - Chỉ lâm sàng: không hiện %, kèm lời khuyên bổ sung phim X-quang.
-  - Mỗi kết quả có phần nhận xét và lời khuyên sinh theo dữ liệu đã gửi (`resultInsight` trong `src/utils/predictionDisplay.ts`).
-- **Hiệu năng trên tập test** (từ `predict/README.md`):
-
-  | Luồng | ROC-AUC | Độ nhạy | Độ đặc hiệu |
-  |---|---|---|---|
-  | Chỉ lâm sàng | 0,64 | 0,86 | 0,34 |
-  | Ảnh + lâm sàng | 0,82 | 0,82 | 0,62 |
-
-  Luồng chỉ lâm sàng yếu; tín hiệu mạnh đến từ ảnh.
+### 4.6. Kết quả của model (PG)
+- **Đầu vào:** `lamSang` (bắt buộc `tinh` ∈ `Binh Dinh`, `Dong Nai`, `Hai Duong`, `Phu Yen`, `Thai Nguyen`) và phim nếu có. Danh sách cột: `predict/ml/pg/MO_TA_API.md`.
+- **Đầu ra:**
+  - `xacSuat`: xác suất đã hiệu chỉnh (0–1), trung bình 5 mô hình fold × 3 seed;
+  - `xacSuatTheoFold`: xác suất của từng mô hình fold, cho thấy độ dao động;
+  - `chuYVung`: khi có phim, mức chú ý của mô hình lên 6 vùng phổi, **chỉ để tham khảo**;
+  - `canhBao`: câu cảnh báo tiếng Việt do mô hình sinh (chất lượng ảnh, tỉnh ít dữ liệu…).
+- **Không có ngưỡng, không có kết luận** dương/âm hay "có nguy cơ". Ngưỡng PG đang chờ duyệt; không tự đặt.
+- Mô hình New Way cũ (XGBoost + BioViL-T, có ngưỡng) **đã bỏ** từ migration V7.
+- ⚠️ **Phía web chưa cập nhật theo PG** (form trường lâm sàng, ô chọn tỉnh, phần hiển thị kết quả). Các mô tả hiển thị kết quả ở mục 4.8 và trong `sillicosis-web` vẫn là của New Way cho đến khi web được sửa.
 
 ### 4.7. Quản lý tài khoản (Admin)
 - **Chức năng:**
@@ -207,6 +193,8 @@ PostgreSQL. Schema do **Flyway** quản lý trong `src/main/resources/db/migrati
 | `V2`, `V3` | `predictions` của model cũ / bổ sung cột New Way |
 | `V4__predictions_merge_visits_images.sql` | **Gộp** `visits` + `images` + `predictions` thành bảng `predictions` mới (xoá dữ liệu lượt khám cũ) |
 | `V5__merge_patients_into_users.sql` | **Gộp** `patients` vào `users` (giữ mã BN), đổi `patient_code_seq` thành `user_code_seq` |
+| `V6__users_tieu_su.sql` | Thêm tiểu sử (`tieu_su`) vào `users` |
+| `V7__predictions_pg.sql` | Chuyển `predictions` sang mô hình PG: **xoá mọi lượt cũ** (dữ liệu thử), bỏ 8 cột New Way, thêm `xac_suat`, `xac_suat_theo_fold`, `chu_y_vung`, `canh_bao` |
 
 Quy ước:
 - khoá chính là UUID, thời gian dùng `TIMESTAMPTZ` (UTC);
@@ -234,7 +222,7 @@ Quy ước:
 | Bảng | Ý nghĩa | Cột đáng chú ý |
 |---|---|---|
 | `users` | Tài khoản kiêm hồ sơ bệnh nhân | `email` (unique, chữ thường), `phone` (unique, tuỳ chọn), `password_hash`, `role` (`USER`/`ADMIN`), `enabled`, `failed_login_attempts` + `locked_until`; **hồ sơ:** `code` (BN-…, null với ADMIN), `birth_date`, `gender`, `tieu_su` (JSONB, xem 4.4); `deleted_at` |
-| `predictions` | Lượt chẩn đoán | `user_id`, `exam_date`, **`lam_sang` (JSONB)**: đầu vào model, đã kèm giới tính/năm sinh chụp từ hồ sơ; **ảnh** `image_storage_key`, `image_content_type`, `image_width`, `image_height`, `image_sha256` (đủ cả hoặc null cả); **kết quả** `status` (`SUCCESS`/`FAILED`), `error_code`, `p_lam_sang`, `p_anh`, `p_ghep`, các ngưỡng, `ket_luan_cuoi`, `model_version`; `deleted_at` |
+| `predictions` | Lượt chẩn đoán | `user_id`, `exam_date`, **`lam_sang` (JSONB)**: đầu vào model, đã kèm giới tính/năm sinh chụp từ hồ sơ; **ảnh** `image_storage_key`, `image_content_type`, `image_width`, `image_height`, `image_sha256` (đủ cả hoặc null cả); **kết quả** `status` (`SUCCESS`/`FAILED`), `error_code`, `xac_suat`, `xac_suat_theo_fold` (JSONB), `co_anh`, `chu_y_vung` (JSONB, null khi không có ảnh), `canh_bao` (JSONB), `model_version`; `deleted_at` |
 | `refresh_tokens` | Refresh token đang phát hành | `token_hash` (SHA-256), `expires_at`, `revoked_at` |
 | `password_reset_otp` | Mỗi lần yêu cầu quên mật khẩu | `otp_hash`, `expires_at`, `attempts`, `used`, `reset_token_hash` |
 
@@ -317,8 +305,8 @@ silicosis-backend/
 │   │   ├── PredictionController     Gửi (multipart), danh sách, chi tiết, ảnh, thử lại, xoá
 │   │   ├── PredictionService        Kiểm tra đầu vào, chép giới tính/năm sinh từ hồ sơ, gọi model, lưu
 │   │   ├── Prediction               Entity: đầu vào + ảnh + kết quả trên một dòng
-│   │   ├── PredictClient            HTTP client gọi FastAPI (/predict/clinical, /predict/clinical-image, /schema)
-│   │   ├── ClinicalValidator        Kiểm tra lamSang theo /schema trước khi lưu
+│   │   ├── PredictClient            HTTP client gọi FastAPI (/predict/pg, /schema)
+│   │   ├── ClinicalValidator        Kiểm tra lamSang theo /schema trước khi lưu (tinh bắt buộc, từ chối cột lạ/tự tính)
 │   │   └── PredictException         Mã lỗi khi service AI lỗi (lưu vào error_code)
 │   └── image/
 │       ├── ImageProcessor           Kiểm tra định dạng/kích thước, xoá EXIF, tính SHA-256
@@ -326,18 +314,19 @@ silicosis-backend/
 │
 ├── src/main/resources/
 │   ├── application.yaml         Cấu hình; giá trị nhạy cảm đọc từ biến môi trường / .env
-│   └── db/migration/            Flyway V1…V5 (chỉ THÊM file mới, không sửa file cũ)
+│   └── db/migration/            Flyway V1…V7 (chỉ THÊM file mới, không sửa file cũ)
 │
 ├── src/test/                    Unit test service + integration test (Testcontainers, GreenMail, server AI giả)
 │   ├── AuthFlowIntegrationTest  register → login → forgot → verify → reset
 │   └── prediction/PredictionApiIntegrationTest   Gửi, xem, ảnh, thử lại, phân quyền, lỗi service AI
 │
 └── predict/                     Service AI (Python/FastAPI) — chạy riêng, cổng 8001
-    ├── app/main.py              /health, /schema, /predict/clinical, /predict/clinical-image
-    ├── app/new_way.py           Kiểm tra lâm sàng, gọi gói model
-    ├── ml/new_way/              Gói model nhóm ML bàn giao — KHÔNG sửa
+    ├── app/main.py              /health, /schema, /predict/pg
+    ├── app/pg.py                Kiểm tra lâm sàng, nạp và gọi gói PG
+    ├── ml/pg/                   Gói mô hình PG — KHÔNG sửa logic
     │   ├── MO_TA_API.md         ★ Danh sách cột lâm sàng và mã hợp lệ
-    │   └── mo_hinh/             Trọng số (~330 MB) — KHÔNG có trong git
+    │   ├── mo_hinh_PG_web/      Trọng số (~23 MB) — KHÔNG có trong git
+    │   └── biovil_t_…_128.pt    BioViL-T gốc (~110 MB, chỉ cần khi gửi ảnh) — KHÔNG có trong git
     └── README.md                Cách chạy + giới hạn mô hình
 ```
 
@@ -463,7 +452,7 @@ Flyway tự tạo hoặc nâng schema, `AdminSeeder` tự tạo tài khoản adm
 
 Nếu bỏ qua bước này, lượt chẩn đoán vẫn được lưu nhưng `FAILED` (có nút Thử lại). Muốn tắt hẳn thì đặt `PREDICT_ENABLED=false`.
 
-1. Xin nhóm ML thư mục `mo_hinh/` (~330 MB) và chép vào `predict/ml/new_way/mo_hinh/`.
+1. Xin nhóm ML thư mục `mo_hinh_PG_web/` (~23 MB) và file BioViL-T `biovil_t_image_model_proj_size_128.pt`, chép vào `predict/ml/pg/` (xem [predict/README.md](../predict/README.md)).
 2. Chạy:
 
 ```powershell
@@ -533,7 +522,7 @@ npm run test:e2e                         # đủ bộ; live.spec cần backend +
 - **Dữ liệu y tế:** không log mật khẩu, OTP, token, SĐT, họ tên, giá trị lâm sàng hay điểm số. Không commit `.env`, mật khẩu SMTP hay file trọng số.
 - **Thêm hoặc đổi API:** cập nhật `docs/api-*.md` tương ứng.
 - **Trường lâm sàng:** nếu đổi, phải khớp ở 3 nơi:
-  - `predict/ml/new_way/MO_TA_API.md`;
+  - `predict/ml/pg/MO_TA_API.md`;
   - `/schema` của service AI (ClinicalValidator đọc từ đây);
   - `src/constants/clinicalFields.ts` bên web.
 
